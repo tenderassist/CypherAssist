@@ -1,0 +1,312 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap");
+
+body {
+  font-family: monospace, sans-seriff;
+  background-color: #ffffff;
+  text-align: center;
+  font-size: 20px;
+}
+
+@keyframes float3D {
+  0% {
+    transform: translateY(0) rotateX(0deg);
+    text-shadow: 3px 3px 0px #d44a4e, 6px 6px 0px #a33a3d, 9px 9px 0px #732a2d;
+  }
+  25% {
+    transform: translateY(-4px) rotateX(4deg);
+    text-shadow: 4px 4px 0px #d44a4e, 7px 7px 0px #a33a3d, 10px 10px 0px #732a2d;
+  }
+  50% {
+    transform: translateY(0) rotateX(0deg);
+    text-shadow: 3px 3px 0px #d44a4e, 6px 6px 0px #a33a3d, 9px 9px 0px #732a2d;
+  }
+  75% {
+    transform: translateY(4px) rotateX(-4deg);
+    text-shadow: 2px 2px 0px #d44a4e, 5px 5px 0px #a33a3d, 8px 8px 0px #732a2d;
+  }
+  100% {
+    transform: translateY(0) rotateX(0deg);
+    text-shadow: 3px 3px 0px #d44a4e, 6px 6px 0px #a33a3d, 9px 9px 0px #732a2d;
+  }
+}
+
+h1 {
+  font-family: "Orbitron", sans-serif;
+  font-size: 70px;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-align: left; /* 🔥 Now aligned to the left */
+  color: #ff5a5f;
+  text-shadow: 3px 3px 0px #d44a4e, 6px 6px 0px #a33a3d, 9px 9px 0px #732a2d;
+  animation: float3D 3s infinite ease-in-out;
+}
+
+h2 {
+  font-family: "Chakra Petch", sans-serif;
+  font-size: 60px;
+  color: #eb0f1a;
+  font-weight: 700;
+  font-style: normal;
+  text-transform: uppercase;
+}
+
+.navbar {
+  display: flex;
+  justify-content: left;
+  align-items: left;
+  border-radius: px;
+  background: #e0e0e0;
+  box-shadow: -30px 30px 60px #aaaaaa, 30px -30px 60px #ffffff;
+}
+
+.navitem {
+  color: rgb(0, 0, 0);
+  text-decoration: none;
+  padding: 12px 20px; /* Makes entire button clickable */
+  font-size: 20px;
+  transition: all 0.3s ease;
+}
+
+.navitem:hover {
+  background-color: #ff5a5f;
+}
+
+.navitem-active {
+  font-weight: bold;
+  padding: 14px 24px;
+  background-color: #c81d25;
+  color: #ffffff;
+}
+
+.quicksearch {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+  background-color: #e0e0e0;
+  border-radius: 25px;
+  box-shadow: inset 4px 4px 10px #bcbcbc, inset -4px -4px 10px #ffffff;
+  color: #4d4d4d;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 15px 15px;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid rgb(206, 206, 206);
+}
+
+.quicksearch:hover {
+  box-shadow: inset 2px 2px 5px #bcbcbc, inset -2px -2px 5px #ffffff,
+    2px 2px 5px #bcbcbc, -2px -2px 5px #ffffff;
+}
+
+#quicksearchResult {
+  position: absolute;
+  top: 110px; /* Adjust placement below search bar */
+  right: 10px;
+  background: #f8f8f8;
+  border-radius: 12px;
+  box-shadow: 2px 2px 5px #bcbcbc, -2px -2px 5px #ffffff;
+  color: #333;
+  font-size: 16px;
+  padding: 10px;
+  width: 230px;
+  min-height: 30px;
+  display: none; /* Initially hidden */
+  text-align: center;
+  border: 1px solid #ccc;
+  z-index: 1000; /* Ensures it stays on top */
+}
+
+#quicksearchResult.active {
+  display: block;
+}
+
+#quicksearchResult.error {
+  color: red;
+  background: #ffeeee;
+  border: 1px solid red;
+}
+
+.input {
+  height: 40px;
+  font-size: 20px;
+  border-radius: 8px;
+  border: 2px solid hsl(0, 92%, 66%);
+  outline: none;
+  transition: 200ms ease-in;
+  padding-left: 1rem;
+}
+
+.input:focus {
+  border-bottom: 4px solid hsl(0, 92%, 66%);
+  padding-top: 2px;
+}
+
+.input::placeholder {
+  color: hsl(0, 92%, 66%);
+  opacity: 0.5;
+}
+
+.boxNumber {
+  font-size: 20px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid hsl(0, 92%, 66%);
+  outline: none;
+  transition: 200ms ease-in;
+  padding-left: 1rem;
+}
+
+.boxNumber:focus {
+  border-bottom: 4px solid hsl(0, 92%, 66%);
+  padding-top: 2px;
+}
+
+.boxNumber::placeholder {
+  color: hsl(0, 92%, 66%);
+  opacity: 0.5;
+}
+
+button {
+  border: none;
+  outline: none;
+  background-color: #c81d25;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 5px;
+  transition: all ease 0.1s;
+  box-shadow: 0px 5px 0px 0px #ff5a5f;
+}
+
+button:active {
+  transform: translateY(5px);
+  box-shadow: 0px 0px 0px 0px #ff5a5f;
+}
+
+.plus-button {
+  padding: 5px 12px;
+  font-size: 20px;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: #000;
+  background-color: #b6b2b29f;
+  border: none;
+  border-radius: 45px;
+  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease 0s;
+  cursor: pointer;
+  outline: none;
+}
+
+.plus-button:hover {
+  background-color: #c42323;
+  box-shadow: 0px 15px 20px rgba(218, 6, 6, 0.678);
+  color: #fff;
+  transform: translateY(-7px);
+}
+
+.plus-button:active {
+  transform: translateY(-1px);
+}
+
+.removeBox {
+  background-color: transparent;
+  position: relative;
+  border: none;
+}
+
+.removeBox::after {
+  content: "delete";
+  position: absolute;
+  top: -130%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  height: fit-content;
+  background-color: rgb(168, 7, 7);
+  padding: 4px 8px;
+  border-radius: 5px;
+  transition: 0.2s linear;
+  transition-delay: 0.2s;
+  color: white;
+  text-transform: uppercase;
+  font-size: 12px;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.icon {
+  transform: scale(1.2);
+  transition: 0.2s linear;
+}
+
+.removeBox:hover > .icon {
+  transform: scale(1.5);
+}
+
+.removeBox:hover > .icon path {
+  fill: rgb(168, 7, 7);
+}
+
+.removeBox:hover::after {
+  visibility: visible;
+  opacity: 1;
+  top: -160%;
+}
+
+.removeBox {
+  cursor: pointer;
+  background: #c81d25;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  /*border-radius: 50%;  Makes it circular */
+  font-size: 20px;
+  font-weight: bold;
+  width: 25px;
+  height: 25px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.2s ease-in-out;
+}
+
+.removeBox:hover {
+  background: #e63946;
+}
+
+.removeBox:active {
+  transform: scale(0.9);
+}
+
+select {
+  /* Reset */
+  appearance: none;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  /* Personalize */
+  width: 15rem;
+  padding: 1rem 4rem 1rem 1rem;
+  background: var(--arrow-icon) no-repeat right 0.8em center / 1.4em,
+    linear-gradient(to left, var(--arrow-bg) 3em, var(--select-bg) 3em);
+  color: rgb(0, 0, 0);
+  border-radius: 0.25em;
+  box-shadow: 0 0 1em 0 rgba(255, 0, 0, 0.2);
+  cursor: pointer;
+  /* Remove IE arrow */
+  &::-ms-expand {
+    display: none;
+  }
+  /* Remove focus outline */
+  &:focus {
+    outline: none;
+  }
+  /* <option> colors */
+  option {
+    color: inherit;
+    background-color: var(--option-bg);
+  }
+}

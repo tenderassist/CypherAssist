@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher Assist</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+
+  <body>
+    <h1>*Cypher</h1>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="addbox.html">Add/Delete Boxes</a>
+      <a class="navitem-active">Add/Delete Offices</a>
+      <a class="navitem" href="reset.html">Reset</a>
+      <a class="navitem" href="index.html">Back to work</a>
+    </nav>
+
+    <h2>Add/Delete Offices</h2>
+    <div id="officelist"></div>
+    <br />
+
+    <a>Add/Delete: </a>
+    <select id="adddeloffice">
+      <option>Select...</option>
+      <option value="add">Add</option>
+      <option value="delete">Delete</option>
+    </select>
+    <br /><br />
+
+    <a>Office Number: </a>
+    <input
+      type="number"
+      autocomplete="off"
+      id="adddeloffnum"
+      class="input"
+      placeholder="e.g. '24'"
+    />
+    <br /><br />
+
+    <a id="feedback"></a>
+    <br /><br />
+
+    <button id="adddeloffbtn">Enter</button>
+
+    <script src="./addoffice.mjs" type="module"></script>
+  </body>
+</html>

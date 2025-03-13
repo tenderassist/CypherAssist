@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher Assist</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+
+  <body>
+    <h1>*Cypher</h1>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem" href="boxin.html">Box In</a>
+      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem-active">Outstanding</a>
+    </nav>
+
+    <h2>Check Outstanding</h2>
+    <a id="feedback"></a>
+    <br /><br />
+
+    <button id="checkoutstandingbtn">Check</button>
+
+    <script src="./outstanding.mjs" type="module"></script>
+  </body>
+</html>

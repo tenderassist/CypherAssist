@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher Assist</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+
+  <body>
+    <h1>*CYPHER</h1>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem-active">Box In</a>
+      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem" href="outstanding.html">Outstanding</a>
+    </nav>
+
+    <h2>BOX IN</h2>
+    <a>Temp:</a>
+    <input
+      type="text"
+      autocomplete="off"
+      id="tempin"
+      class="input"
+      placeholder="e.g. Oom G"
+    />
+    <br /><br />
+
+    <a>Boxes:</a>
+    <button class="plus-button" id="addBoxfield">+</button>
+    <div id="boxesContainer"></div>
+    <br /><br />
+
+    <a id="feedback"></a>
+    <br /><br />
+
+    <button id="boxinbtn">Enter</button>
+
+    <script src="./boxin.mjs" type="module"></script>
+  </body>
+</html>
