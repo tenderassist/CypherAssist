@@ -108,12 +108,12 @@ searchButton.addEventListener("click", async function () {
     try {
       boxHistory = boxData.boxhistory ? JSON.parse(boxData.boxhistory) : [];
     } catch (error) {
-      console.warn("Error parsing box history:", error);
+      console.warn("Error parsing box summary:", error);
       boxHistory = [];
     }
 
     if (boxHistory.length === 0) {
-      feedbackDiv.innerHTML = `Box/Special ${boxID} has no recorded history.`;
+      feedbackDiv.innerHTML = `Box/Special ${boxID} has no recorded summary.`;
       return;
     }
 
@@ -126,7 +126,7 @@ searchButton.addEventListener("click", async function () {
       groupedHistory[record.time].push(record.office);
     });
 
-    let output = `<strong><u>Box/Special ${boxID} History:</u></strong><br>`;
+    let output = `<strong><u>Box/Special ${boxID} Summary:</u></strong><br>`;
     Object.keys(groupedHistory).forEach((time) => {
       output += `
         <strong>Time Checked In:</strong> ${time} <br>

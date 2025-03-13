@@ -110,7 +110,7 @@ searchButton.addEventListener("click", async function () {
         ? JSON.parse(officeData.officehistory)
         : [];
     } catch (error) {
-      console.warn("Error parsing office history:", error);
+      console.warn("Error parsing office summary:", error);
       officeHistory = [];
     }
 
@@ -128,7 +128,20 @@ searchButton.addEventListener("click", async function () {
       groupedHistory[record.time].push(record.box);
     });
 
-    let output = `<strong><u>Office ${officeID} History:</u></strong><br>`;
+    const currentBoxesRef = ref(db, `boxes`);
+    const currentSnapshot = await get(currentBoxesRef);
+    const currentBoxes = [];
+
+    currentSnapshot.forEach((boxSnapshot) => {
+      const boxData = boxSnapshot.val();
+      if (boxData.boxoffice === officeID) {
+        currentBoxes.push(boxSnapshot.key);
+      }
+    });
+
+    let output = `<strong><u>Office ${officeID} Summary:</u></strong> (${currentBoxes.join(
+      ", "
+    )}<br>`;
     Object.keys(groupedHistory).forEach((time) => {
       output += `
         <strong>Boxes:</strong> ${groupedHistory[time].join(", ")} <br>
