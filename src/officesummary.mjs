@@ -128,6 +128,7 @@ searchButton.addEventListener("click", async function () {
       groupedHistory[record.time].push(record.box);
     });
 
+    //This gets the current boxes
     const currentBoxesRef = ref(db, `boxes`);
     const currentSnapshot = await get(currentBoxesRef);
     const currentBoxes = [];
