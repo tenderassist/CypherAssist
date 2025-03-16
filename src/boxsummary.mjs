@@ -129,7 +129,7 @@ searchButton.addEventListener("click", async function () {
     let output = `<strong><u>Box/Special ${boxID} Summary:</u></strong><br>`;
     Object.keys(groupedHistory).forEach((time) => {
       output += `
-        <strong>Time Checked In:</strong> ${time} <br>
+        <strong>Time Checked Out:</strong> ${time} <br>
         <strong>Office:</strong> ${groupedHistory[time].join(", ")} <br><br>
       `;
     });
