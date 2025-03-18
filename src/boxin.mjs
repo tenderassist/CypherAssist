@@ -206,4 +206,8 @@ submitButton.addEventListener("click", async function () {
 
   boxesContainer.innerHTML = "";
   boxCount = 0;
+
+  //Remove from outstanding
+  const outstandingRef = ref(db, `outstanding/${boxID}`);
+  await remove(outstandingRef);
 });

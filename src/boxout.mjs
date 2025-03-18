@@ -147,9 +147,29 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  // Fetching office data
+  //Checking number of boxes in the office
   const newOfficeRef = ref(db, `offices/${officeNumber}`);
   const newOfficeSnapshot = await get(newOfficeRef);
+
+  const officeRef = ref(db, `offices/${officeNumber}/officecurrent`);
+  const officeSnapshot = await get(officeRef);
+
+  let currentBoxes = [];
+  if (officeSnapshot.exists()) {
+    try {
+      currentBoxes = JSON.parse(officeSnapshot.val()) || [];
+    } catch {
+      currentBoxes = [];
+    }
+  }
+
+  // Show warning if office already has 4 or more boxes
+  const numofboxes = currentBoxes.length;
+  if (numofboxes >= 4) {
+    alert(
+      `WARNING: Office ${officeNumber} already has ${numofboxes} boxes/specials.`
+    );
+  }
 
   //Variable for bulk update
   let updates = {};
