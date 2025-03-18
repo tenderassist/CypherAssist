@@ -164,12 +164,12 @@ submitButton.addEventListener("click", async function () {
   }
 
   // Show warning if office already has 4 or more boxes
-  const numofboxes = currentBoxes.length;
-  if (numofboxes >= 4) {
-    alert(
-      `WARNING: Office ${officeNumber} already has ${numofboxes} boxes/specials.`
-    );
-  }
+  //const numofboxes = currentBoxes.length;
+  //if (numofboxes >= 4) {
+  //  alert(
+  //    `WARNING: Office ${officeNumber} already has ${numofboxes} boxes/specials.`
+  //  );
+  //}
 
   //Variable for bulk update
   let updates = {};
