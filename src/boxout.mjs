@@ -82,23 +82,38 @@ let boxCount = 0; //for add boxes button
 
 //ADD BOX BUTTON--------------------------------------------------------------------------------
 addBoxButton.addEventListener("click", function () {
-  boxCount++;
+  if (boxCount >= 6) {
+    return; // Stop adding if the limit is reached
+  }
 
-  //Create new input for a box
+  boxCount++; // Increase count when adding a box
+
+  // Create new input field for a box
   const div = document.createElement("div");
   div.classList.add("box-input");
   div.innerHTML = `
-  <br/>
+    <br/>
     <input type="text" class="boxNumber" placeholder="e.g. '24'">
-    <button class="removeBox">X  </button>
+    <button class="removeBox">X</button>
     <br/>
   `;
 
   boxesContainer.appendChild(div);
 
+  // Disable button if 6 boxes are added
+  if (boxCount >= 6) {
+    addBoxButton.disabled = true;
+  }
+
   // Remove box input when X is clicked
   div.querySelector(".removeBox").addEventListener("click", function () {
     div.remove();
+    boxCount--; // Decrease count when a box is removed
+
+    // Re-enable button if a box is removed
+    if (boxCount < 6) {
+      addBoxButton.disabled = false;
+    }
   });
 });
 //UPDATING DATABASE------------------------------------------------------------------------------
