@@ -88,10 +88,10 @@ addBoxButton.addEventListener("click", function () {
   const div = document.createElement("div");
   div.classList.add("box-input");
   div.innerHTML = `
-  <br />
+  <br/>
     <input type="text" class="boxNumber" placeholder="e.g. '24'">
-    <button class="removeBox">x</button>
-    <br />
+    <button class="removeBox">X  </button>
+    <br/>
   `;
 
   boxesContainer.appendChild(div);
