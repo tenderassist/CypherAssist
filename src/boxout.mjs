@@ -90,7 +90,7 @@ addBoxButton.addEventListener("click", function () {
   div.innerHTML = `
   <br/>
     <input type="text" class="boxNumber" placeholder="e.g. '24'">
-    <button class="removeBox">X  </button>
+    <button class="removeBox" tabindex="-1">x</button>
     <br/>
   `;
 
@@ -101,6 +101,56 @@ addBoxButton.addEventListener("click", function () {
     div.remove();
   });
 });
+
+// BARCODE SCANNER HANDLING --------------------------------------------------------------------
+document.addEventListener("keydown", function (event) {
+  // Barcode scanners usually type fast, so we can collect input characters
+  if (!window.barcodeInput) {
+    window.barcodeInput = "";
+    window.lastScanTime = Date.now();
+  }
+
+  const currentTime = Date.now();
+  const timeDiff = currentTime - window.lastScanTime;
+
+  // If time between keys is too long, reset input
+  if (timeDiff > 100) {
+    window.barcodeInput = "";
+  }
+
+  window.lastScanTime = currentTime;
+
+  // If Enter is pressed, treat it as end of barcode scan
+  if (event.key === "Enter") {
+    const scannedValue = window.barcodeInput.trim();
+    if (scannedValue !== "") {
+      // Add new box input with scanned barcode value
+      const div = document.createElement("div");
+      div.classList.add("box-input");
+      div.innerHTML = `
+        <br />
+        <input type="text" class="boxNumber" value="${scannedValue}">
+        <button class="removeBox" tabindex="-1">x</button>
+        <br />
+      `;
+      boxesContainer.appendChild(div);
+
+      // Add remove functionality
+      div.querySelector(".removeBox").addEventListener("click", function () {
+        div.remove();
+      });
+
+      // Reset input
+      window.barcodeInput = "";
+    }
+  } else {
+    // Only add single characters (avoid Shift, Ctrl, etc.)
+    if (event.key.length === 1) {
+      window.barcodeInput += event.key;
+    }
+  }
+});
+
 //UPDATING DATABASE------------------------------------------------------------------------------
 document.addEventListener("keydown", (event) => {
   if (event.key === "Enter") document.getElementById("boxoutbtn").click();

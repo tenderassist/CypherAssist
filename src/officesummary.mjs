@@ -105,6 +105,17 @@ searchButton.addEventListener("click", async function () {
     const officeData = snapshot.val();
     let officeHistory = [];
 
+    // Get current boxes in the office
+let currentBoxes = [];
+try {
+  currentBoxes = officeData.officecurrent
+    ? JSON.parse(officeData.officecurrent)
+    : [];
+} catch (err) {
+  console.warn("Error parsing current boxes:", err);
+  currentBoxes = [];
+}
+
     try {
       officeHistory = officeData.officehistory
         ? JSON.parse(officeData.officehistory)
@@ -128,7 +139,8 @@ searchButton.addEventListener("click", async function () {
       groupedHistory[record.time].push(record.box);
     });
 
-    let output = `<strong><u>Office ${officeID} History:</u></strong><br>`;
+    let output = `<strong><u>Office ${officeID} Summary:</u></strong><br>
+    <strong>CURRENT BOXES:</strong> ${currentBoxes.join(", ") || "None"}<br><br>`
     Object.keys(groupedHistory).forEach((time) => {
       output += `
         <strong>Boxes:</strong> ${groupedHistory[time].join(", ")} <br>
