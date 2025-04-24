@@ -102,6 +102,7 @@ checkButton.addEventListener("click", async function () {
     Object.keys(boxes).forEach((boxID) => {
       const box = boxes[boxID];
       if (!box.boxtimeout) return; // Skip if no checkout time
+      if (box.boxstatus === "In safe") return; // Skip if it's already back
 
       const [outHours, outMinutes] = box.boxtimeout.split(":").map(Number);
       const lastOutDate = new Date();
