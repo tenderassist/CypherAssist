@@ -90,7 +90,7 @@ addBoxButton.addEventListener("click", function () {
   div.innerHTML = `
   <br/>
     <input type="text" class="boxNumber" placeholder="e.g. '24'">
-    <button class="removeBox">X  </button>
+    <button class="removeBox" tabindex="-1">x</button>
     <br/>
   `;
 
@@ -101,6 +101,56 @@ addBoxButton.addEventListener("click", function () {
     div.remove();
   });
 });
+
+// BARCODE SCANNER HANDLING --------------------------------------------------------------------
+let scanBuffer = "";
+let scanTimeout;
+
+document.addEventListener("keydown", function (event) {
+  const active = document.activeElement;
+
+  // Ignore if user is typing into an input field
+  if (
+    active.tagName === "INPUT" &&
+    (active.id === "tempout" ||
+      active.id === "outoffnum" ||
+      active.id === "quicksearch" ||
+      active.classList.contains("boxNumber"))
+  ) {
+    return;
+  }
+
+  // If key is a single character (part of barcode)
+  if (event.key.length === 1) {
+    scanBuffer += event.key;
+
+    clearTimeout(scanTimeout);
+    scanTimeout = setTimeout(() => {
+      if (scanBuffer.length > 0) {
+        addScannedBox(scanBuffer);
+        scanBuffer = "";
+      }
+    }, 50); // short timeout to group the scan into one string
+  }
+});
+
+function addScannedBox(scannedValue) {
+  const div = document.createElement("div");
+  div.classList.add("box-input");
+  div.innerHTML = `
+    <br/>
+    <input type="text" class="boxNumber" value="${scannedValue}">
+    <button class="removeBox" tabindex="-1">x</button>
+    <br/>
+  `;
+
+  boxesContainer.appendChild(div);
+
+  div.querySelector(".removeBox").addEventListener("click", function () {
+    div.remove();
+  });
+}
+
 //UPDATING DATABASE------------------------------------------------------------------------------
 document.addEventListener("keydown", (event) => {
   if (event.key === "Enter") document.getElementById("boxoutbtn").click();

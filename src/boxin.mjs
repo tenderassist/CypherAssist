@@ -90,7 +90,7 @@ addBoxButton.addEventListener("click", function () {
   div.innerHTML = `
   <br />
     <input type="text" class="boxNumber" placeholder="e.g. '24'">
-    <button class="removeBox">x</button>
+    <button class="removeBox" tabindex="-1">x</button>
     <br />
   `;
 
@@ -101,6 +101,63 @@ addBoxButton.addEventListener("click", function () {
     div.remove();
   });
 });
+
+// BARCODE SCANNER HANDLING --------------------------------------------------------------------
+let scanBuffer = ""; // Buffer to hold scanned characters
+let scanTimeout; // Timeout to wait for scan completion
+
+document.addEventListener("keydown", function (event) {
+  const active = document.activeElement;
+
+  // Ignore if the user is typing into any input fields like tempin or boxNumber
+  if (
+    active.tagName === "INPUT" &&
+    (active.id === "tempin" ||
+      active.id === "quicksearch" ||
+      active.classList.contains("boxNumber"))
+  ) {
+    return;
+  }
+
+  // If key is a single character (part of barcode)
+  if (event.key.length === 1) {
+    scanBuffer += event.key; // Add scanned character to buffer
+
+    // Clear any previous timeout to ensure the scan isn't split
+    clearTimeout(scanTimeout);
+
+    // Set a short timeout to group scan characters together into one scan
+    scanTimeout = setTimeout(() => {
+      if (scanBuffer.length > 0) {
+        addScannedBox(scanBuffer); // Call function to add scanned box
+        scanBuffer = ""; // Reset the buffer for the next scan
+      }
+    }, 50); // Timeout to group the scan into one string
+  }
+});
+
+function addScannedBox(scannedValue) {
+  // Create a new div to contain the new box input field
+  const div = document.createElement("div");
+  div.classList.add("box-input");
+
+  // Create HTML for the new box input and remove button
+  div.innerHTML = `
+    <br />
+    <input type="text" class="boxNumber" value="${scannedValue}" readonly />
+    <button class="removeBox" tabindex="-1">x</button>
+    <br />
+  `;
+
+  // Append the new box field to the boxes container
+  boxesContainer.appendChild(div);
+
+  // Add event listener to the remove button to allow removing the box
+  div.querySelector(".removeBox").addEventListener("click", function () {
+    div.remove();
+  });
+}
+
 //UPDATING DATABASE------------------------------------------------------------------------------
 document.addEventListener("keydown", (event) => {
   if (event.key === "Enter") document.getElementById("boxinbtn").click();
