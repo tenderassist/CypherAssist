@@ -166,14 +166,12 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  //Getting the current time
   const now = new Date();
   const currentTime =
     now.getHours().toString().padStart(2, "0") +
     ":" +
     now.getMinutes().toString().padStart(2, "0");
 
-  //Getting all boxes IDs
   const boxIDs = Array.from(boxInputs)
     .map((input) => input.value.trim())
     .filter((boxID) => boxID !== "");
@@ -183,11 +181,9 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  //Fetching all boxes in one request
   const boxRefs = boxIDs.map((boxID) => ref(db, `boxes/${boxID}`));
   const boxSnapshots = await Promise.all(boxRefs.map(get));
 
-  //Filter out non-existent boxes
   const validBoxes = boxSnapshots
     .map((snapshot, index) => (snapshot.exists() ? boxIDs[index] : null))
     .filter((boxID) => boxID !== null);
@@ -197,75 +193,105 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  // Fetching office data
   const newOfficeRef = ref(db, `offices/${officeNumber}`);
   const newOfficeSnapshot = await get(newOfficeRef);
 
-  //Variable for bulk update
   let updates = {};
 
-  //Update box records
-  validBoxes.forEach((boxID) => {
-    const snapshot = boxSnapshots.find(
-      (snap) => snap.exists() && snap.key === boxID
-    );
-    if (!snapshot) return;
-
-    const boxData = snapshot.val();
-    let history = [];
-
-    try {
-      history = boxData.boxhistory ? JSON.parse(boxData.boxhistory) : [];
-    } catch {
-      history = [];
-    }
-
-    //Updating history in office
-    history.push({ office: officeNumber, time: currentTime });
-
-    //Updateing box data
-    updates[`boxes/${boxID}`] = {
-      boxhistory: JSON.stringify(history),
-      boxoffice: officeNumber,
-      boxtempout: tempout,
-      boxtimeout: currentTime,
-    };
-  });
-
-  //Updateing office data
   let officeCurrent = [];
   let officeHistory = [];
 
   if (newOfficeSnapshot.exists()) {
     const officeData = newOfficeSnapshot.val();
-    officeCurrent = officeData.officecurrent
-      ? JSON.parse(officeData.officecurrent)
-      : [];
-    officeHistory = officeData.officehistory
-      ? JSON.parse(officeData.officehistory)
-      : [];
+    try {
+      officeCurrent = officeData.officecurrent
+        ? JSON.parse(officeData.officecurrent)
+        : [];
+    } catch {
+      officeCurrent = [];
+    }
+
+    try {
+      officeHistory = officeData.officehistory
+        ? JSON.parse(officeData.officehistory)
+        : [];
+    } catch {
+      officeHistory = [];
+    }
   }
 
-  //Adding valid boxes to new office
-  validBoxes.forEach((boxID) => {
+  for (const boxID of validBoxes) {
+    const snapshot = boxSnapshots.find(
+      (snap) => snap.exists() && snap.key === boxID
+    );
+    if (!snapshot) continue;
+
+    const boxData = snapshot.val();
+    const oldOffice = boxData.boxoffice;
+
+    // Parse boxhistory as string
+    let boxHistory = [];
+    try {
+      boxHistory = boxData.boxhistory ? JSON.parse(boxData.boxhistory) : [];
+    } catch {
+      boxHistory = [];
+    }
+
+    boxHistory.push({ office: officeNumber, time: currentTime });
+
+    // Update box data
+    updates[`boxes/${boxID}`] = {
+      boxhistory: JSON.stringify(boxHistory),
+      boxoffice: officeNumber,
+      boxtempout: tempout,
+      boxtimeout: currentTime,
+    };
+
+    // Remove from old office if applicable
+    if (oldOffice && oldOffice !== officeNumber) {
+      const oldOfficeRef = ref(db, `offices/${oldOffice}`);
+      const oldOfficeSnapshot = await get(oldOfficeRef);
+
+      if (oldOfficeSnapshot.exists()) {
+        const oldOfficeData = oldOfficeSnapshot.val();
+        let oldCurrent = [];
+
+        try {
+          oldCurrent = oldOfficeData.officecurrent
+            ? JSON.parse(oldOfficeData.officecurrent)
+            : [];
+        } catch {
+          oldCurrent = [];
+        }
+
+        const updatedOldCurrent = oldCurrent.filter((id) => id !== boxID);
+        updates[`offices/${oldOffice}/officecurrent`] =
+          JSON.stringify(updatedOldCurrent);
+      }
+    }
+
+    // Add to new office
     if (!officeCurrent.includes(boxID)) {
       officeCurrent.push(boxID);
     }
-    officeHistory.push({ box: boxID, time: currentTime });
-  });
 
+    officeHistory.push({ box: boxID, time: currentTime });
+  }
+
+  // Final office updates
   updates[`offices/${officeNumber}/officecurrent`] =
     JSON.stringify(officeCurrent);
   updates[`offices/${officeNumber}/officehistory`] =
     JSON.stringify(officeHistory);
   updates[`offices/${officeNumber}/officenum`] = officeNumber;
 
-  //Applying all updates AHHAAHAHHA
   await update(ref(db), updates);
 
   document.getElementById(
     "feedback"
-  ).innerText = `Successfully checked out ${validBoxes.length} Boxes/Specials to Office ${officeNumber}!`;
+  ).innerText = `Successfully checked out ${validBoxes.join(
+    ", "
+  )} to Office ${officeNumber}!`;
 
   officeOutInput.value = "";
   boxesContainer.innerHTML = "";

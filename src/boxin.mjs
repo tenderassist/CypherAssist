@@ -172,14 +172,12 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  //Current time
   const now = new Date();
   const currentTime =
     now.getHours().toString().padStart(2, "0") +
     ":" +
     now.getMinutes().toString().padStart(2, "0");
 
-  //Geting all the box IDs
   const boxIDs = Array.from(boxInputs)
     .map((input) => input.value.trim())
     .filter((boxID) => boxID !== "");
@@ -189,11 +187,9 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  //Fetching all boxes in one request
   const boxRefs = boxIDs.map((boxID) => ref(db, `boxes/${boxID}`));
   const boxSnapshots = await Promise.all(boxRefs.map(get));
 
-  //Filtering out non-existent boxes
   const validBoxes = boxSnapshots
     .map((snapshot, index) => (snapshot.exists() ? boxIDs[index] : null))
     .filter((boxID) => boxID !== null);
@@ -203,14 +199,13 @@ submitButton.addEventListener("click", async function () {
     return;
   }
 
-  //Fetching previous office data
   const previousOfficeNumbers = [
     ...new Set(
       boxSnapshots
         .map((snapshot) =>
           snapshot.exists() ? snapshot.val().boxoffice : null
         )
-        .filter((office) => office !== null) // Filter out null values
+        .filter((office) => office !== null)
     ),
   ];
   const previousOfficeRefs = previousOfficeNumbers.map((officeNum) =>
@@ -222,14 +217,14 @@ submitButton.addEventListener("click", async function () {
 
   let updates = {};
 
-  //Updating box records
+  // Update box records
   validBoxes.forEach((boxID) => {
     updates[`boxes/${boxID}/boxtempin`] = tempin;
     updates[`boxes/${boxID}/boxtimein`] = currentTime;
     updates[`boxes/${boxID}/boxoffice`] = "In Safe";
   });
 
-  //Remove box from `officecurrent` from previous office
+  // Remove boxes from old offices' officecurrent list
   previousOfficeSnapshots.forEach((snapshot, index) => {
     if (!snapshot.exists()) return;
 
@@ -238,28 +233,25 @@ submitButton.addEventListener("click", async function () {
     let officeCurrent = [];
 
     try {
-      officeCurrent = officeData.officecurrent
-        ? JSON.parse(officeData.officecurrent)
-        : [];
+      officeCurrent = Array.isArray(officeData.officecurrent)
+        ? officeData.officecurrent
+        : JSON.parse(officeData.officecurrent || "[]");
     } catch {
       officeCurrent = [];
     }
 
-    //Removing checked in boxes from `officecurrent`
-    officeCurrent = officeCurrent.filter(
-      (boxID) => !validBoxes.includes(boxID)
-    );
+    // Remove all validBoxes from officeCurrent
+    const filtered = officeCurrent.filter((id) => !validBoxes.includes(id));
 
     updates[`offices/${prevOfficeNumber}/officecurrent`] =
-      JSON.stringify(officeCurrent);
+      JSON.stringify(filtered);
   });
 
-  //Applying all updates
   await update(ref(db), updates);
 
   document.getElementById(
     "feedback"
-  ).innerText = `Successfully checked in ${validBoxes.length} Boxes/Specials!`;
+  ).innerText = `Successfully checked in ${validBoxes.join(", ")}!`;
 
   boxesContainer.innerHTML = "";
   boxCount = 0;
