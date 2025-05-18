@@ -103,7 +103,7 @@ addBoxButton.addEventListener("click", function () {
 });
 
 // BARCODE SCANNER HANDLING --------------------------------------------------------------------
-/*let scanBuffer = "";
+let scanBuffer = "";
 let scanTimeout;
 
 document.addEventListener("keydown", function (event) {
@@ -132,7 +132,7 @@ document.addEventListener("keydown", function (event) {
       }
     }, 50); // short timeout to group the scan into one string
   }
-});*/
+});
 
 function addScannedBox(scannedValue) {
   const div = document.createElement("div");
