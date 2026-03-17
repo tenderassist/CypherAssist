@@ -1,0 +1,25 @@
+{
+  "name": "cypher-assist",
+  "version": "3.1.0",
+  "private": true,
+  "description": "CypherAssist frontend",
+  "source": [
+    "index.html",
+    "addbox.html",
+    "addoffice.html",
+    "boxin.html",
+    "boxout.html",
+    "boxsummary.html",
+    "officesummary.html",
+    "outstanding.html",
+    "reset.html",
+    "searchbox.html"
+  ],
+  "scripts": {
+    "dev": "parcel serve index.html",
+    "build": "parcel build"
+  },
+  "devDependencies": {
+    "parcel": "^2.14.4"
+  }
+}
