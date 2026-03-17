@@ -20,6 +20,7 @@
     "build": "parcel build"
   },
   "devDependencies": {
+    "firebase": "^10.12.5",
     "parcel": "^2.14.4"
   }
 }

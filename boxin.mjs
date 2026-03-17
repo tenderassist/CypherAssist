@@ -2,7 +2,7 @@ import {
   ref,
   update,
   get,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+} from "firebase/database";
 import { db } from "./firebase.mjs";
 import { initQuickSearch } from "./quicksearch.mjs";
 import { initDynamicBoxFields } from "./boxfields.mjs";

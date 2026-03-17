@@ -1,4 +1,4 @@
-import { ref, get } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import { ref, get } from "firebase/database";
 import { db } from "./firebase.mjs";
 import { escapeHtml, minutesSinceClockTime } from "./utils.mjs";
 
