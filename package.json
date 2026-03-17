@@ -15,12 +15,18 @@
     "reset.html",
     "searchbox.html"
   ],
+  "alias": {
+    "process": "process/browser"
+  },
   "scripts": {
     "dev": "parcel serve index.html",
-    "build": "parcel build"
+    "build": "parcel build --no-source-maps"
   },
   "devDependencies": {
     "firebase": "^10.12.5",
     "parcel": "^2.14.4"
+  },
+  "dependencies": {
+    "process": "^0.11.10"
   }
 }
