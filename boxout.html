@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body id="top">
+    <h1>
+      <a class="brand-link" href="index.html" aria-label="Go to home page">
+        <img class="brand-logo" src="./Logo.png" alt="" />
+        <span class="brand-wordmark">Cypher</span>
+      </a>
+    </h1>
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+    ></button>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem" href="boxin.html">Box In</a>
+      <a class="navitem-active">Box Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem" href="outstanding.html">Outstanding</a>
+    </nav>
+
+    <main class="page-panel">
+      <h2>Box Out</h2>
+      <p class="page-intro">
+        Check boxes out to an office and keep the information up to date.
+      </p>
+      <div class="field-row">
+        <span class="field-label">Temp</span>
+        <input
+          type="text"
+          autocomplete="off"
+          id="tempout"
+          class="input"
+          placeholder="e.g. Oom G"
+        />
+      </div>
+
+      <div class="field-row">
+        <span class="field-label">Office</span>
+        <input
+          type="number"
+          autocomplete="off"
+          id="outoffnum"
+          class="input"
+          placeholder="e.g. '24'"
+        />
+      </div>
+
+      <div class="field-row inline-action">
+        <span class="field-label">Boxes</span>
+        <button class="plus-button" id="addBoxfield" tabindex="-1">+</button>
+      </div>
+      <div id="boxesContainer"></div>
+
+      <a id="feedback"></a>
+
+      <button id="boxoutbtn" tabindex="-1">Enter</button>
+    </main>
+
+    <a class="back-to-top" href="#top" aria-label="Back to top"></a>
+
+    <footer class="app-stamp">
+      <p>Cypher v3.1 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Quietly working behind the scenes ;)</p>
+    </footer>
+
+    <script src="./boxout.mjs" type="module"></script>
+    <script src="./theme.mjs" type="module"></script>
+    <script src="./backtotop.mjs" type="module"></script>
+    <script src="./outstandingalert.mjs" type="module"></script>
+  </body>
+</html>

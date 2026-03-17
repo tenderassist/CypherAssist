@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body id="top">
+    <h1>
+      <a class="brand-link" href="index.html" aria-label="Go to home page">
+        <img class="brand-logo" src="./Logo.png" alt="" />
+        <span class="brand-wordmark">Cypher</span>
+      </a>
+    </h1>
+
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+    ></button>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem-active">Home</a>
+      <a class="navitem" href="boxin.html">Box In</a>
+      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem" href="outstanding.html">Outstanding</a>
+      <a class="navitem" href="addbox.html">Admin</a>
+    </nav>
+
+    <main class="page-panel">
+      <h2>Welcome to Cypher</h2>
+      <p class="page-intro">
+        New look, New functions, New Feel. I hope you like the changes :)
+      </p>
+      <section class="dashboard-grid">
+        <div class="metric-card metric-card-stat">
+          <span class="metric-label">Total Boxes & Specials</span>
+          <strong class="metric-value" id="totalBoxes">0</strong>
+        </div>
+        <div class="metric-card metric-card-stat">
+          <span class="metric-label">In Safe</span>
+          <strong class="metric-value" id="inSafeCount">0</strong>
+        </div>
+        <div class="metric-card metric-card-stat">
+          <span class="metric-label">Checked Out</span>
+          <strong class="metric-value" id="checkedOutCount">0</strong>
+        </div>
+        <div class="metric-card metric-card-stat">
+          <span class="metric-label">Active Offices</span>
+          <strong class="metric-value" id="activeOfficesCount">0</strong>
+        </div>
+
+        <section class="metric-card metric-card-wide">
+          <div class="metric-header">
+            <div>
+              <h3>Box Status Split</h3>
+              <p>How many boxes are currently in the safe versus checked out.</p>
+            </div>
+          </div>
+          <div class="gauge-layout">
+            <div class="semi-gauge-wrap">
+              <div class="semi-gauge" id="statusGauge">
+                <div class="semi-gauge-inner">
+                  <span class="semi-gauge-value" id="safePercentage">0%</span>
+                  <span class="semi-gauge-label">in safe</span>
+                </div>
+              </div>
+            </div>
+            <div class="gauge-legend">
+              <div class="legend-row">
+                <span class="legend-key legend-key-safe"></span>
+                <span>In Safe</span>
+                <strong id="legendSafeCount">0</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-key legend-key-out"></span>
+                <span>Checked Out</span>
+                <strong id="legendOutCount">0</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-key legend-key-total"></span>
+                <span>Total</span>
+                <strong id="legendTotalCount">0</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="metric-card">
+          <div class="metric-header">
+            <div>
+              <h3>Most Booked Out Boxes</h3>
+              <p>Boxes with the highest booking activity for the day.</p>
+            </div>
+          </div>
+          <div class="insight-list" id="topBoxesList"></div>
+        </section>
+
+        <section class="metric-card">
+          <div class="metric-header">
+            <div>
+              <h3>Busiest Offices</h3>
+              <p>Offices that have received the most boxes/specials.</p>
+            </div>
+          </div>
+          <div class="insight-list" id="topOfficesList"></div>
+        </section>
+      </section>
+    </main>
+
+    <a class="back-to-top" href="#top" aria-label="Back to top"></a>
+
+    <footer class="app-stamp">
+      <p>Cypher v3.1 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Quietly working behind the scenes ;)</p>
+    </footer>
+
+    <script src="./index.mjs" type="module"></script>
+    <script src="./theme.mjs" type="module"></script>
+    <script src="./backtotop.mjs" type="module"></script>
+    <script src="./outstandingalert.mjs" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body id="top">
+    <h1>
+      <a class="brand-link" href="index.html" aria-label="Go to home page">
+        <img class="brand-logo" src="./Logo.png" alt="" />
+        <span class="brand-wordmark">Cypher</span>
+      </a>
+    </h1>
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+    ></button>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem" href="boxin.html">Box In</a>
+      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem-active">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem" href="outstanding.html">Outstanding</a>
+    </nav>
+
+    <main class="page-panel">
+      <h2>Search Box</h2>
+      <p class="page-intro">
+        Look up a box or special quickly to see where it is currently assigned.
+      </p>
+      <div class="field-row search-inline-row">
+        <span class="field-label">Box/Special</span>
+        <div class="search-inline-controls">
+          <input
+            type="number"
+            autocomplete="off"
+            id="searchnum"
+            class="input"
+            placeholder="e.g. '24'"
+          />
+          <button id="searchbtn">Search &#x1F50E;&#xFE0E;</button>
+        </div>
+      </div>
+
+      <div id="feedback" class="search-feedback"></div>
+    </main>
+
+    <a class="back-to-top" href="#top" aria-label="Back to top"></a>
+
+    <footer class="app-stamp">
+      <p>Cypher v3.1 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Quietly working behind the scenes ;)</p>
+    </footer>
+
+    <script src="./searchbox.mjs" type="module"></script>
+    <script src="./theme.mjs" type="module"></script>
+    <script src="./backtotop.mjs" type="module"></script>
+    <script src="./outstandingalert.mjs" type="module"></script>
+  </body>
+</html>
