@@ -1,23 +1,33 @@
 {
-  "name": "javascript",
-  "version": "1.0.0",
-  "description": "The JavaScript template",
+  "name": "cypher-assist",
+  "version": "3.1.0",
+  "private": true,
+  "description": "CypherAssist frontend",
+  "source": [
+    "index.html",
+    "login.html",
+    "addbox.html",
+    "addoffice.html",
+    "boxin.html",
+    "boxout.html",
+    "boxsummary.html",
+    "officesummary.html",
+    "outstanding.html",
+    "reset.html",
+    "searchbox.html"
+  ],
+  "alias": {
+    "process": "process/browser"
+  },
   "scripts": {
-    "start": "parcel ./src/index.html",
-    "build": "parcel build ./src/index.html"
+    "dev": "parcel serve index.html",
+    "build": "parcel build index.html login.html addbox.html addoffice.html boxin.html boxout.html boxsummary.html officesummary.html outstanding.html reset.html searchbox.html --no-source-maps"
   },
   "devDependencies": {
-    "babel-eslint": "^10.1.0",
-    "buffer": "^6.0.3",
-    "eslint": "^7.2.0",
-    "parcel": "^2.0.0",
-    "process": "^0.11.10"
+    "firebase": "^10.12.5",
+    "parcel": "^2.14.4"
   },
-  "keywords": [
-    "css",
-    "javascript"
-  ],
   "dependencies": {
-    "firebase": "^11.4.0"
+    "process": "^0.11.10"
   }
 }

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js",
+          "firebase/database": "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js"
+        }
+      }
+    </script>
+  </head>
+
+  <body id="top">
+    <h1>
+      <a class="brand-link" href="index.html" aria-label="Go to home page">
+        <img class="brand-logo" src="./Logo.png" alt="" />
+        <span class="brand-wordmark">Cypher</span>
+      </a>
+    </h1>
+    <button class="logout-button" type="button">Log out</button>
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+    ></button>
+    <input
+      type="search"
+      class="quicksearch"
+      id="quicksearch"
+      placeholder="Quick Search"
+    />
+    <div id="quicksearchResult"></div>
+
+    <nav class="navbar">
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem" href="boxin.html">Box In</a>
+      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem-active">Outstanding</a>
+    </nav>
+
+    <main class="page-panel">
+      <h2>Check Outstanding</h2>
+      <p class="page-intro">
+        Generate a list of boxes & specials currently out for longer than the
+        time limit of 60 minutes.
+      </p>
+      <button id="checkoutstandingbtn">Check</button>
+
+      <div id="feedback" class="outstanding-feedback"></div>
+    </main>
+
+    <a class="back-to-top" href="#top" aria-label="Back to top"></a>
+
+    <footer class="app-stamp">
+      <p>Cypher v3.2 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Quietly working behind the scenes ;)</p>
+    </footer>
+
+    <script src="./outstanding.mjs" type="module"></script>
+    <script src="./theme.mjs" type="module"></script>
+    <script src="./backtotop.mjs" type="module"></script>
+    <script src="./outstandingalert.mjs" type="module"></script>
+  </body>
+</html>

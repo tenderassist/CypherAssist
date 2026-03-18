@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Cypher Login</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js",
+          "firebase/database": "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js"
+        }
+      }
+    </script>
+  </head>
+
+  <body class="login-page">
+    <button
+      class="theme-toggle"
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+    ></button>
+
+    <main class="page-panel login-panel">
+      <section class="login-card login-card-simple" aria-labelledby="loginFormTitle">
+        <div class="login-mark" aria-hidden="true">
+          <img class="login-mark-logo" src="./Logo.png" alt="" />
+        </div>
+
+        <div class="login-card-head login-card-head-simple">
+          <h2 id="loginFormTitle">Sign in</h2>
+        </div>
+
+        <form id="loginForm" class="login-form" novalidate>
+          <label class="login-field" for="email">
+            <span class="field-label">Email</span>
+            <input
+              class="input login-input"
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="Enter email address"
+              required
+            />
+          </label>
+
+          <label class="login-field" for="password">
+            <span class="field-label">Password</span>
+            <div class="login-password-row">
+              <input
+                class="input login-input"
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Enter password"
+                required
+              />
+              <button
+                type="button"
+                class="login-ghost-button password-toggle"
+                id="togglePassword"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <span class="password-toggle-text">Show</span>
+              </button>
+            </div>
+          </label>
+
+          <div class="login-options login-options-end">
+            <a href="#" class="login-inline-text login-inline-alert" id="forgotPasswordButton">
+              Forgot password?
+            </a>
+          </div>
+
+          <div class="login-actions">
+            <button type="submit" id="loginSubmit">Sign in</button>
+          </div>
+
+          <div id="feedback" class="login-feedback" aria-live="polite"></div>
+        </form>
+      </section>
+    </main>
+
+    <footer class="app-stamp">
+      <p>Cypher v3.2 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Quietly working behind the scenes ;)</p>
+    </footer>
+
+    <script src="./theme.mjs" type="module"></script>
+    <script src="./login.js" type="module"></script>
+  </body>
+</html>
