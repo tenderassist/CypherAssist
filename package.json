@@ -5,6 +5,7 @@
   "description": "CypherAssist frontend",
   "source": [
     "index.html",
+    "login.html",
     "addbox.html",
     "addoffice.html",
     "boxin.html",
@@ -20,7 +21,7 @@
   },
   "scripts": {
     "dev": "parcel serve index.html",
-    "build": "parcel build --no-source-maps"
+    "build": "parcel build index.html login.html addbox.html addoffice.html boxin.html boxout.html boxsummary.html officesummary.html outstanding.html reset.html searchbox.html --no-source-maps"
   },
   "devDependencies": {
     "firebase": "^10.12.5",

@@ -1,8 +1,29 @@
 import { ref, get } from "firebase/database";
 import { db } from "./firebase.mjs";
+import {
+  getBoxesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 import { escapeHtml, minutesSinceClockTime } from "./utils.mjs";
 
-const ALERT_STORAGE_KEY = "cypher-overdue-alerted";
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+const ALERT_STORAGE_KEY = `cypher-overdue-alerted-${user.uid}`;
+const OVERDUE_COUNTER_ID = "overdueCounterLink";
+
+const quicksearchResult = document.getElementById("quicksearchResult");
+const overdueCounterLink =
+  quicksearchResult &&
+  (() => {
+    const link = document.createElement("a");
+    link.id = OVERDUE_COUNTER_ID;
+    link.className = "overdue-counter-link";
+    link.href = "outstanding.html";
+    link.hidden = true;
+    link.setAttribute("aria-live", "polite");
+    quicksearchResult.insertAdjacentElement("beforebegin", link);
+    return link;
+  })();
 
 const popup = document.createElement("div");
 popup.className = "alert-popup";
@@ -26,6 +47,27 @@ popup.innerHTML = `
 document.body.appendChild(popup);
 
 const popupList = document.getElementById("alertPopupList");
+
+function updateOverdueCounter(overdueBoxes) {
+  if (!overdueCounterLink) return;
+
+  if (!overdueBoxes.length) {
+    overdueCounterLink.hidden = true;
+    overdueCounterLink.textContent = "";
+    return;
+  }
+
+  const count = overdueBoxes.length;
+  overdueCounterLink.textContent = `\u26A0 ${count} ${
+    count === 1 ? "box" : "boxes"
+  } overdue`;
+  overdueCounterLink.hidden = false;
+}
+
+function handleOutstandingAlertError(message, error) {
+  updateOverdueCounter([]);
+  console.error(message, error);
+}
 
 function getAlertedKeys() {
   try {
@@ -57,8 +99,9 @@ document.addEventListener("keydown", (event) => {
 });
 
 async function checkOutstandingAlerts() {
-  const snapshot = await get(ref(db, "boxes"));
+  const snapshot = await get(ref(db, boxesCollectionPath));
   if (!snapshot.exists()) {
+    updateOverdueCounter([]);
     closePopup();
     saveAlertedKeys(new Set());
     return;
@@ -85,6 +128,7 @@ async function checkOutstandingAlerts() {
   });
 
   overdueBoxes.sort((a, b) => b.minutesElapsed - a.minutesElapsed);
+  updateOverdueCounter(overdueBoxes);
   const currentOverdueKeys = new Set(overdueBoxes.map((box) => box.alertKey));
   const alertedKeys = getAlertedKeys();
   const activeAlertedKeys = new Set(
@@ -131,11 +175,11 @@ async function checkOutstandingAlerts() {
 }
 
 checkOutstandingAlerts().catch((error) => {
-  console.error("Outstanding alert check failed:", error);
+  handleOutstandingAlertError("Outstanding alert check failed:", error);
 });
 
 window.setInterval(() => {
   checkOutstandingAlerts().catch((error) => {
-    console.error("Outstanding alert refresh failed:", error);
+    handleOutstandingAlertError("Outstanding alert refresh failed:", error);
   });
 }, 60000);

@@ -5,6 +5,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js",
+          "firebase/database": "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js"
+        }
+      }
+    </script>
   </head>
 
   <body id="top">
@@ -14,6 +23,7 @@
         <span class="brand-wordmark">Cypher</span>
       </a>
     </h1>
+    <button class="logout-button" type="button">Log out</button>
     <button
       class="theme-toggle"
       id="themeToggle"
@@ -47,13 +57,15 @@
         <span class="field-label">Box/Special</span>
         <div class="search-inline-controls">
           <input
-            type="number"
+            type="text"
             autocomplete="off"
             id="searchnum"
             class="input"
-            placeholder="e.g. '24'"
+            placeholder="e.g. 24"
           />
-          <button id="searchbtn">Search &#x1F50E;&#xFE0E;</button>
+          <button id="searchbtn" class="button-with-icon button-with-icon-search">
+            Search
+          </button>
         </div>
       </div>
 
@@ -63,7 +75,7 @@
     <a class="back-to-top" href="#top" aria-label="Back to top"></a>
 
     <footer class="app-stamp">
-      <p>Cypher v3.1 &bull; Created by Seth Garreth Van Schalkwyk</p>
+      <p>Cypher v3.2 &bull; Created by Seth Garreth Van Schalkwyk</p>
       <p>Quietly working behind the scenes ;)</p>
     </footer>
 

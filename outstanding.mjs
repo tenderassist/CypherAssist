@@ -10,8 +10,15 @@ import {
   minutesSinceClockTime,
   setFeedback,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+
+initQuickSearch(db, user);
 
 const checkButton = document.getElementById("checkoutstandingbtn");
 const feedbackDiv = document.getElementById("feedback");
@@ -30,7 +37,7 @@ checkButton.addEventListener("click", async () => {
   );
 
   try {
-    const snapshot = await get(ref(db, "boxes"));
+    const snapshot = await get(ref(db, boxesCollectionPath));
 
     if (!snapshot.exists()) {
       setFeedback(

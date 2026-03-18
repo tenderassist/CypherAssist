@@ -7,21 +7,31 @@ import {
 } from "firebase/database";
 import { db } from "./firebase.mjs";
 import { initQuickSearch } from "./quicksearch.mjs";
+import { initCustomSelect } from "./customselect.mjs";
 import {
   bindEnterToButton,
   renderStatusCollection,
   setFeedback,
   sortNumericStrings,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
 
-const boxesRef = ref(db, "boxes");
+initQuickSearch(db, user);
+
+const boxesRef = ref(db, boxesCollectionPath);
 const boxListElement = document.getElementById("boxlist");
 const actionSelect = document.getElementById("adddelbox");
 const numberInput = document.getElementById("adddelboxnum");
 const feedbackElement = document.getElementById("feedback");
 const submitButton = document.getElementById("adddelbtn");
+
+initCustomSelect(actionSelect);
 
 onValue(boxesRef, (snapshot) => {
   const boxes = snapshot.exists() ? snapshot.val() : {};
@@ -54,7 +64,7 @@ submitButton.addEventListener("click", async () => {
     return;
   }
 
-  const boxRef = ref(db, `boxes/${boxID}`);
+  const boxRef = ref(db, `${boxesCollectionPath}/${boxID}`);
 
   try {
     const snapshot = await get(boxRef);
@@ -82,7 +92,8 @@ submitButton.addEventListener("click", async () => {
       numberInput.value = "";
       setFeedback(
         feedbackElement,
-        `Successfully ADDED Box/Special ${boxID}!`
+        `Successfully ADDED Box/Special ${boxID}!`,
+        { success: true }
       );
       return;
     }
@@ -94,9 +105,21 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
+    const boxData = snapshot.val();
+    if (String(boxData?.boxoffice || "In Safe").toLowerCase() !== "in safe") {
+      setFeedback(
+        feedbackElement,
+        `Box/Special ${boxID} is still checked out to Office ${boxData.boxoffice}. Check it in before deleting it.`,
+        { error: true }
+      );
+      return;
+    }
+
     await remove(boxRef);
     numberInput.value = "";
-    setFeedback(feedbackElement, `Successfully DELETED Box/Special ${boxID}!`);
+    setFeedback(feedbackElement, `Successfully DELETED Box/Special ${boxID}!`, {
+      success: true,
+    });
   } catch (error) {
     console.error("Error updating boxes:", error);
     setFeedback(feedbackElement, "Could not update boxes. Please try again.", {

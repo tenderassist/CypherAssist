@@ -1,11 +1,12 @@
 import { ref, get } from "firebase/database";
+import { getBoxesCollectionPath } from "./auth.mjs";
 
-function initQuickSearch(db) {
+function initQuickSearch(db, user) {
   const quicksearchInput = document.getElementById("quicksearch");
   const resultDiv = document.getElementById("quicksearchResult");
   let lastRequestId = 0;
 
-  if (!quicksearchInput || !resultDiv) return;
+  if (!quicksearchInput || !resultDiv || !user) return;
 
   const positionResult = () => {
     const rect = quicksearchInput.getBoundingClientRect();
@@ -55,7 +56,9 @@ function initQuickSearch(db) {
     }
 
     try {
-      const snapshot = await get(ref(db, `boxes/${quickboxID}`));
+      const snapshot = await get(
+        ref(db, `${getBoxesCollectionPath(user)}/${quickboxID}`)
+      );
       if (requestId !== lastRequestId) return;
 
       if (!snapshot.exists()) {

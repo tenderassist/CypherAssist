@@ -7,21 +7,66 @@ import { initQuickSearch } from "./quicksearch.mjs";
 import {
   bindEnterToButton,
   escapeHtml,
+  minutesSinceClockTime,
   parseJsonArray,
   setFeedback,
   sortNumericStrings,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  getOfficesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+const officesCollectionPath = getOfficesCollectionPath(user);
+
+initQuickSearch(db, user);
 
 const searchButton = document.getElementById("searchoffbtn");
 const searchInput = document.getElementById("searchoffnum");
 const feedbackDiv = document.getElementById("feedback");
+let activeHistoryEntry = null;
+let activeHistoryChip = null;
+let historyHighlightTimeoutId = null;
 
 function buildHistoryId(...parts) {
   return parts
     .map((part) => String(part).replace(/[^a-zA-Z0-9]/g, "-"))
     .join("-");
+}
+
+function formatDuration(totalMinutes) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes < 0) {
+    return "Unavailable";
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (!hours) {
+    return `${minutes} min`;
+  }
+
+  if (!minutes) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
+}
+
+function getClockDifference(startTime, endTime) {
+  const startMinutesAgo = minutesSinceClockTime(startTime);
+  const endMinutesAgo = minutesSinceClockTime(endTime);
+
+  if (startMinutesAgo == null || endMinutesAgo == null) {
+    return null;
+  }
+
+  return startMinutesAgo >= endMinutesAgo
+    ? startMinutesAgo - endMinutesAgo
+    : startMinutesAgo + (24 * 60 - endMinutesAgo);
 }
 
 bindEnterToButton(searchButton);
@@ -37,7 +82,7 @@ searchButton.addEventListener("click", async () => {
   }
 
   try {
-    const snapshot = await get(ref(db, `offices/${officeID}`));
+    const snapshot = await get(ref(db, `${officesCollectionPath}/${officeID}`));
 
     if (!snapshot.exists()) {
       setFeedback(feedbackDiv, "Office not found in the database.", {
@@ -53,27 +98,94 @@ searchButton.addEventListener("click", async () => {
     const officeHistory = parseJsonArray(officeData.officehistory).filter(
       (record) => record && record.box && record.time
     );
-
-    const groupedHistory = {};
     const latestHistoryIdByBox = {};
+    const boxesByCheckoutTime = {};
+    const timesSeenByBox = {};
 
     officeHistory.forEach((record) => {
-      if (!groupedHistory[record.time]) {
-        groupedHistory[record.time] = [];
+      if (!boxesByCheckoutTime[record.time]) {
+        boxesByCheckoutTime[record.time] = [];
       }
 
-      groupedHistory[record.time].push(record.box);
-      latestHistoryIdByBox[record.box] = buildHistoryId(
-        "history",
-        officeID,
-        record.time,
-        record.box
-      );
+      boxesByCheckoutTime[record.time].push(record.box);
+      timesSeenByBox[record.box] = (timesSeenByBox[record.box] || 0) + 1;
     });
 
     const uniqueBoxes = sortNumericStrings([
       ...new Set(officeHistory.map((record) => record.box)),
     ]);
+
+    const boxSnapshots = await Promise.all(
+      uniqueBoxes.map((box) => get(ref(db, `${boxesCollectionPath}/${box}`)))
+    );
+    const boxDataById = {};
+
+    boxSnapshots.forEach((boxSnapshot, index) => {
+      if (!boxSnapshot.exists()) return;
+      boxDataById[uniqueBoxes[index]] = boxSnapshot.val();
+    });
+
+    const enrichedHistory = officeHistory.map((record, index) => {
+      const chipId = buildHistoryId("history", officeID, record.time, record.box, index);
+      latestHistoryIdByBox[record.box] = chipId;
+
+      const boxData = boxDataById[record.box];
+      const boxHistory = parseJsonArray(boxData?.boxhistory).filter(
+        (entry) => entry && entry.office && entry.time
+      );
+      const matchingIndex = boxHistory.findIndex(
+        (entry) =>
+          String(entry.office) === String(officeID) &&
+          String(entry.time) === String(record.time)
+      );
+
+      let retrievedTime = "";
+      let duration = "";
+
+      if (matchingIndex !== -1) {
+        const nextEntry = boxHistory[matchingIndex + 1];
+
+        if (nextEntry?.time) {
+          retrievedTime = String(nextEntry.time);
+          duration = formatDuration(
+            getClockDifference(String(record.time), String(nextEntry.time))
+          );
+        } else if (
+          boxData?.boxoffice &&
+          String(boxData.boxoffice).toLowerCase() === "in safe" &&
+          boxData.boxtimein
+        ) {
+          retrievedTime = String(boxData.boxtimein);
+          duration = formatDuration(
+            getClockDifference(String(record.time), String(boxData.boxtimein))
+          );
+        } else if (String(boxData?.boxoffice) === String(officeID)) {
+          retrievedTime = "Still in office";
+          duration = "In progress";
+        } else {
+          retrievedTime = "Unavailable";
+          duration = "Unavailable";
+        }
+      } else {
+        retrievedTime = "Unavailable";
+        duration = "Unavailable";
+      }
+
+      const checkedOutWithBoxes = sortNumericStrings(
+        (boxesByCheckoutTime[record.time] || []).filter(
+          (box) => String(box) !== String(record.box)
+        )
+      );
+
+      return {
+        ...record,
+        chipId,
+        retrievedTime,
+        duration,
+        checkedOutWithBoxes,
+        timesSeen: timesSeenByBox[record.box] || 0,
+      };
+    });
 
     const currentBoxesMarkup = currentBoxes.length
       ? currentBoxes
@@ -99,34 +211,63 @@ searchButton.addEventListener("click", async () => {
           .join("")
       : `<div class="status-empty">No boxes recorded yet.</div>`;
 
-    const historyItems = Object.keys(groupedHistory)
-      .map((time) => {
-        const boxMarkup = groupedHistory[time]
-          .map((box) => {
-            const chipId = buildHistoryId("history", officeID, time, box);
-
-            return `
-              <span
-                class="status-chip summary-history-chip"
-                id="${escapeHtml(
-                  latestHistoryIdByBox[box] === chipId ? chipId : ""
-                )}"
-              >
-                ${escapeHtml(box)}
-              </span>
-            `;
-          })
-          .join("");
-
+    const historyItems = enrichedHistory
+      .map((record) => {
         return `
           <article class="summary-history-item">
-            <div class="summary-history-row">
-              <span class="summary-history-label">Boxes</span>
-              <div class="summary-history-pills">${boxMarkup}</div>
+            <div class="summary-history-row summary-history-row-split">
+              <div>
+                <span class="summary-history-label">Box</span>
+                <div class="summary-history-pills">
+                  <span
+                    class="status-chip summary-history-chip"
+                    id="${escapeHtml(record.chipId)}"
+                  >
+                    ${escapeHtml(record.box)}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <span class="summary-history-label">Times Seen</span>
+                <strong class="summary-history-value">${escapeHtml(
+                  record.timesSeen
+                )}</strong>
+              </div>
             </div>
-            <div class="summary-history-row">
-              <span class="summary-history-label">Time</span>
-              <strong class="summary-history-value">${escapeHtml(time)}</strong>
+            <div class="summary-history-row summary-history-row-split">
+              <div>
+                <span class="summary-history-label">Checked Out At</span>
+                <strong class="summary-history-value">${escapeHtml(record.time)}</strong>
+              </div>
+              <div>
+                <span class="summary-history-label">Retrieved</span>
+                <strong class="summary-history-value">${escapeHtml(
+                  record.retrievedTime
+                )}</strong>
+              </div>
+            </div>
+            <div class="summary-history-row summary-history-row-split">
+              <div>
+                <span class="summary-history-label">Duration In Office</span>
+                <strong class="summary-history-value">${escapeHtml(
+                  record.duration
+                )}</strong>
+              </div>
+              <div>
+                <span class="summary-history-label">Checked Out With</span>
+                <div class="summary-history-pills">
+                  ${
+                    record.checkedOutWithBoxes.length
+                      ? record.checkedOutWithBoxes
+                          .map(
+                            (box) =>
+                              `<span class="status-chip">${escapeHtml(box)}</span>`
+                          )
+                          .join("")
+                      : `<span class="summary-history-helper">None</span>`
+                  }
+                </div>
+              </div>
             </div>
           </article>
         `;
@@ -187,10 +328,40 @@ feedbackDiv.addEventListener("click", (event) => {
 
   const target = document.getElementById(targetId);
   if (!target) return;
+  const historyEntry = target.closest(".summary-history-item");
+
+  if (activeHistoryEntry && activeHistoryEntry !== historyEntry) {
+    activeHistoryEntry.classList.remove("summary-history-item-active");
+    activeHistoryEntry.classList.remove("summary-history-item-flash");
+  }
+
+  if (activeHistoryChip && activeHistoryChip !== target) {
+    activeHistoryChip.classList.remove("summary-history-chip-selected");
+    activeHistoryChip.classList.remove("summary-history-chip-active");
+  }
+
+  if (historyEntry) {
+    historyEntry.classList.add("summary-history-item-active");
+    historyEntry.classList.remove("summary-history-item-flash");
+    activeHistoryEntry = historyEntry;
+  }
+
+  target.classList.add("summary-history-chip-selected");
+  target.classList.remove("summary-history-chip-active");
+  activeHistoryChip = target;
 
   target.scrollIntoView({ behavior: "smooth", block: "center" });
+  historyEntry?.offsetWidth;
+  historyEntry?.classList.add("summary-history-item-flash");
   target.classList.add("summary-history-chip-active");
-  window.setTimeout(() => {
+
+  if (historyHighlightTimeoutId) {
+    window.clearTimeout(historyHighlightTimeoutId);
+  }
+
+  historyHighlightTimeoutId = window.setTimeout(() => {
     target.classList.remove("summary-history-chip-active");
+    historyEntry?.classList.remove("summary-history-item-flash");
+    historyHighlightTimeoutId = null;
   }, 1600);
 });

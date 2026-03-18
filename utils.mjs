@@ -13,7 +13,7 @@ function parseJsonArray(value) {
 function setFeedback(element, content, options = {}) {
   if (!element) return;
 
-  const { error = false, html = false } = options;
+  const { error = false, html = false, success = false } = options;
 
   if (html) {
     element.innerHTML = content;
@@ -22,6 +22,7 @@ function setFeedback(element, content, options = {}) {
   }
 
   element.classList.toggle("error", error);
+  element.classList.toggle("success", success);
 }
 
 function bindEnterToButton(button) {
@@ -124,9 +125,34 @@ function renderStatusCollection(container, options) {
   `;
 }
 
+function getMissingBoxesMessage(missingBoxes, totalRequested) {
+  const missingCount = missingBoxes.length;
+
+  if (!missingCount) {
+    return "";
+  }
+
+  if (missingCount === totalRequested && missingCount === 1) {
+    return `Box/Special ${missingBoxes[0]} does not exist in the database.`;
+  }
+
+  if (missingCount === totalRequested) {
+    return "None of the entered boxes were found in the database.";
+  }
+
+  if (missingCount === 1) {
+    return ` Skipped Box/Special ${missingBoxes[0]} because it does not exist in the database.`;
+  }
+
+  return ` Skipped boxes that do not exist in the database: ${sortNumericStrings(
+    missingBoxes
+  ).join(", ")}.`;
+}
+
 export {
   bindEnterToButton,
   escapeHtml,
+  getMissingBoxesMessage,
   getCurrentTimeString,
   minutesSinceClockTime,
   parseJsonArray,

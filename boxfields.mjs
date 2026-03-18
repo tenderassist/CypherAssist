@@ -1,12 +1,14 @@
-function initDynamicBoxFields(container, addButton, placeholder = "e.g. '24'") {
+function initDynamicBoxFields(container, addButton, placeholder = "e.g. 24") {
   if (!container || !addButton) {
     return {
+      addValue: () => {},
       getValues: () => [],
       clear: () => {},
     };
   }
 
-  const addField = () => {
+  const addField = (initialValue = "", options = {}) => {
+    const { focus = true } = options;
     const row = document.createElement("div");
     row.className = "box-input";
     row.innerHTML = `
@@ -19,12 +21,21 @@ function initDynamicBoxFields(container, addButton, placeholder = "e.g. '24'") {
     });
 
     container.appendChild(row);
-    row.querySelector(".boxNumber")?.focus();
+    const input = row.querySelector(".boxNumber");
+    if (input) {
+      input.value = initialValue;
+      if (focus) {
+        input.focus();
+      }
+    }
   };
 
-  addButton.addEventListener("click", addField);
+  addButton.addEventListener("click", () => addField());
 
   return {
+    addValue(value, options = {}) {
+      addField(value, options);
+    },
     getValues() {
       const fields = container.querySelectorAll(".boxNumber");
       return [...new Set(

@@ -1,8 +1,6 @@
 const STORAGE_KEY = "cypher-theme";
 const root = document.documentElement;
 const themeToggle = document.getElementById("themeToggle");
-const SUN_ICON = String.fromCodePoint(0x2600) + "\uFE0E";
-const MOON_ICON = String.fromCodePoint(0x23FE);
 
 function applyTheme(theme) {
   root.setAttribute("data-theme", theme);
@@ -13,7 +11,6 @@ function applyTheme(theme) {
     "aria-label",
     theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
   );
-  themeToggle.textContent = theme === "dark" ? SUN_ICON : MOON_ICON;
   themeToggle.classList.toggle("theme-toggle-dark", theme === "dark");
 }
 

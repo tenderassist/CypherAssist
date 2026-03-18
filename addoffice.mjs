@@ -7,21 +7,34 @@ import {
 } from "firebase/database";
 import { db } from "./firebase.mjs";
 import { initQuickSearch } from "./quicksearch.mjs";
+import { initCustomSelect } from "./customselect.mjs";
 import {
   bindEnterToButton,
   renderStatusCollection,
   setFeedback,
   sortNumericStrings,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  getOfficesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+const officesCollectionPath = getOfficesCollectionPath(user);
 
-const officesRef = ref(db, "offices");
+initQuickSearch(db, user);
+
+const officesRef = ref(db, officesCollectionPath);
 const officeListElement = document.getElementById("officelist");
 const actionSelect = document.getElementById("adddeloffice");
 const numberInput = document.getElementById("adddeloffnum");
 const feedbackElement = document.getElementById("feedback");
 const submitButton = document.getElementById("adddeloffbtn");
+const boxesRef = ref(db, boxesCollectionPath);
+
+initCustomSelect(actionSelect);
 
 onValue(officesRef, (snapshot) => {
   const offices = snapshot.exists() ? snapshot.val() : {};
@@ -56,7 +69,7 @@ submitButton.addEventListener("click", async () => {
     return;
   }
 
-  const officeRef = ref(db, `offices/${officeID}`);
+  const officeRef = ref(db, `${officesCollectionPath}/${officeID}`);
 
   try {
     const snapshot = await get(officeRef);
@@ -78,7 +91,9 @@ submitButton.addEventListener("click", async () => {
       });
 
       numberInput.value = "";
-      setFeedback(feedbackElement, `Successfully ADDED Office ${officeID}!`);
+      setFeedback(feedbackElement, `Successfully ADDED Office ${officeID}!`, {
+        success: true,
+      });
       return;
     }
 
@@ -89,9 +104,28 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
+    const boxesSnapshot = await get(boxesRef);
+    const activeBoxes = boxesSnapshot.exists()
+      ? Object.entries(boxesSnapshot.val()).filter(([, boxData]) => {
+          return String(boxData?.boxoffice) === officeID;
+        })
+      : [];
+
+    if (activeBoxes.length) {
+      const activeBoxList = sortNumericStrings(activeBoxes.map(([boxID]) => boxID)).join(", ");
+      setFeedback(
+        feedbackElement,
+        `Office ${officeID} still has active boxes assigned: ${activeBoxList}. Check them in or move them before deleting the office.`,
+        { error: true }
+      );
+      return;
+    }
+
     await remove(officeRef);
     numberInput.value = "";
-    setFeedback(feedbackElement, `Successfully DELETED Office ${officeID}!`);
+    setFeedback(feedbackElement, `Successfully DELETED Office ${officeID}!`, {
+      success: true,
+    });
   } catch (error) {
     console.error("Error updating offices:", error);
     setFeedback(

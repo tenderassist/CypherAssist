@@ -10,8 +10,15 @@ import {
   minutesSinceClockTime,
   setFeedback,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+
+initQuickSearch(db, user);
 
 const searchButton = document.getElementById("searchbtn");
 const searchInput = document.getElementById("searchnum");
@@ -23,17 +30,17 @@ searchButton.addEventListener("click", async () => {
   const boxID = searchInput.value.trim();
 
   if (!boxID) {
-    setFeedback(feedbackDiv, "Please enter a valid box number.", {
+    setFeedback(feedbackDiv, "Please enter a valid box or special number.", {
       error: true,
     });
     return;
   }
 
   try {
-    const snapshot = await get(ref(db, `boxes/${boxID}`));
+    const snapshot = await get(ref(db, `${boxesCollectionPath}/${boxID}`));
 
     if (!snapshot.exists()) {
-      setFeedback(feedbackDiv, `Box ${boxID} not found in the database.`, {
+      setFeedback(feedbackDiv, `Box/Special ${boxID} not found in the database.`, {
         error: true,
       });
       return;
@@ -60,7 +67,7 @@ searchButton.addEventListener("click", async () => {
         <div class="search-result-card">
           <div class="search-result-head">
             <span class="search-result-eyebrow">Search Result</span>
-            <h3>Box ${escapeHtml(boxNumber)}</h3>
+            <h3>Box/Special ${escapeHtml(boxNumber)}</h3>
           </div>
           <div class="search-result-grid">
             <div class="search-result-row">

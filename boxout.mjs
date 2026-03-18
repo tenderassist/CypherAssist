@@ -8,13 +8,23 @@ import { initQuickSearch } from "./quicksearch.mjs";
 import { initDynamicBoxFields } from "./boxfields.mjs";
 import {
   bindEnterToButton,
+  getMissingBoxesMessage,
   getCurrentTimeString,
   parseJsonArray,
   setFeedback,
   sortNumericStrings,
 } from "./utils.mjs";
+import {
+  getBoxesCollectionPath,
+  getOfficesCollectionPath,
+  requireAuth,
+} from "./auth.mjs";
 
-initQuickSearch(db);
+const user = await requireAuth();
+const boxesCollectionPath = getBoxesCollectionPath(user);
+const officesCollectionPath = getOfficesCollectionPath(user);
+
+initQuickSearch(db, user);
 
 const tempoutInput = document.getElementById("tempout");
 const officeOutInput = document.getElementById("outoffnum");
@@ -22,6 +32,17 @@ const boxesContainer = document.getElementById("boxesContainer");
 const addBoxButton = document.getElementById("addBoxfield");
 const submitButton = document.getElementById("boxoutbtn");
 const feedbackElement = document.getElementById("feedback");
+const SCAN_KEY_INTERVAL_MS = 50;
+const MIN_SCAN_LENGTH = 3;
+
+let scanBuffer = "";
+let lastScanKeyTime = 0;
+let scannerInProgress = false;
+let rapidKeyCount = 0;
+let editableScanTarget = null;
+let editableScanStartValue = "";
+let editableScanSelectionStart = null;
+let editableScanSelectionEnd = null;
 
 const boxFields = initDynamicBoxFields(boxesContainer, addBoxButton);
 
@@ -48,8 +69,21 @@ submitButton.addEventListener("click", async () => {
 
   try {
     const currentTime = getCurrentTimeString();
+    const newOfficeSnapshot = await get(
+      ref(db, `${officesCollectionPath}/${officeNumber}`)
+    );
+
+    if (!newOfficeSnapshot.exists()) {
+      setFeedback(
+        feedbackElement,
+        `Office ${officeNumber} does not exist in the database.`,
+        { error: true }
+      );
+      return;
+    }
+
     const boxSnapshots = await Promise.all(
-      boxIDs.map((boxID) => get(ref(db, `boxes/${boxID}`)))
+      boxIDs.map((boxID) => get(ref(db, `${boxesCollectionPath}/${boxID}`)))
     );
 
     const validBoxes = [];
@@ -67,7 +101,7 @@ submitButton.addEventListener("click", async () => {
 
       const boxData = snapshot.val();
       const history = parseJsonArray(boxData.boxhistory);
-      history.push({ office: officeNumber, time: currentTime });
+      history.push({ office: officeNumber, time: currentTime, name: tempout });
 
       validBoxes.push(boxID);
 
@@ -79,28 +113,27 @@ submitButton.addEventListener("click", async () => {
         previousOffices.add(String(boxData.boxoffice));
       }
 
-      updates[`boxes/${boxID}/boxhistory`] = JSON.stringify(history);
-      updates[`boxes/${boxID}/boxoffice`] = officeNumber;
-      updates[`boxes/${boxID}/boxtempout`] = tempout;
-      updates[`boxes/${boxID}/boxtimeout`] = currentTime;
+      updates[`${boxesCollectionPath}/${boxID}/boxhistory`] = JSON.stringify(history);
+      updates[`${boxesCollectionPath}/${boxID}/boxoffice`] = officeNumber;
+      updates[`${boxesCollectionPath}/${boxID}/boxtempout`] = tempout;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeout`] = currentTime;
     });
 
     if (!validBoxes.length) {
       setFeedback(
         feedbackElement,
-        "None of the entered boxes were found in the database.",
+        getMissingBoxesMessage(missingBoxes, boxIDs.length),
         { error: true }
       );
       return;
     }
 
     const officeRefs = [
-      get(ref(db, `offices/${officeNumber}`)),
-      ...[...previousOffices].map((officeID) => get(ref(db, `offices/${officeID}`))),
+      ...[...previousOffices].map((officeID) =>
+        get(ref(db, `${officesCollectionPath}/${officeID}`))
+      ),
     ];
-    const [newOfficeSnapshot, ...previousOfficeSnapshots] = await Promise.all(
-      officeRefs
-    );
+    const previousOfficeSnapshots = await Promise.all(officeRefs);
 
     const officeCurrent = parseJsonArray(
       newOfficeSnapshot.exists() ? newOfficeSnapshot.val().officecurrent : "[]"
@@ -117,13 +150,13 @@ submitButton.addEventListener("click", async () => {
       officeHistory.push({ box: boxID, time: currentTime });
     });
 
-    updates[`offices/${officeNumber}/officecurrent`] = JSON.stringify(
+    updates[`${officesCollectionPath}/${officeNumber}/officecurrent`] = JSON.stringify(
       officeCurrent
     );
-    updates[`offices/${officeNumber}/officehistory`] = JSON.stringify(
+    updates[`${officesCollectionPath}/${officeNumber}/officehistory`] = JSON.stringify(
       officeHistory
     );
-    updates[`offices/${officeNumber}/officenum`] = officeNumber;
+    updates[`${officesCollectionPath}/${officeNumber}/officenum`] = officeNumber;
 
     const previousOfficeIds = [...previousOffices];
     previousOfficeSnapshots.forEach((snapshot, index) => {
@@ -135,7 +168,7 @@ submitButton.addEventListener("click", async () => {
         (boxID) => !validBoxes.includes(boxID)
       );
 
-      updates[`offices/${officeID}/officecurrent`] = JSON.stringify(
+      updates[`${officesCollectionPath}/${officeID}/officecurrent`] = JSON.stringify(
         filteredCurrent
       );
     });
@@ -143,13 +176,12 @@ submitButton.addEventListener("click", async () => {
     await update(ref(db), updates);
 
     const checkedOutBoxes = sortNumericStrings(validBoxes).join(", ");
-    const missingMessage = missingBoxes.length
-      ? ` Skipped: ${sortNumericStrings(missingBoxes).join(", ")}.`
-      : "";
+    const missingMessage = getMissingBoxesMessage(missingBoxes, boxIDs.length);
 
     setFeedback(
       feedbackElement,
-      `Successfully checked out ${checkedOutBoxes} to Office ${officeNumber}!${missingMessage}`
+      `Successfully checked out ${checkedOutBoxes} to Office ${officeNumber}!${missingMessage}`,
+      { success: true }
     );
 
     officeOutInput.value = "";
@@ -163,3 +195,131 @@ submitButton.addEventListener("click", async () => {
     );
   }
 });
+
+function normalizeScannedValue(value) {
+  const trimmedValue = String(value || "").trim();
+  if (!trimmedValue) return "";
+
+  const numericSegments = trimmedValue.match(/\d+/g);
+  if (numericSegments?.length) {
+    return numericSegments.sort((a, b) => b.length - a.length)[0];
+  }
+
+  return trimmedValue.replace(/[^a-zA-Z0-9._-]/g, "");
+}
+
+function getEditableScanTarget(target) {
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    return target;
+  }
+
+  return null;
+}
+
+function rememberEditableScanTarget(target) {
+  if (!target || editableScanTarget === target) return;
+
+  editableScanTarget = target;
+  editableScanStartValue = target.value;
+  editableScanSelectionStart = target.selectionStart;
+  editableScanSelectionEnd = target.selectionEnd;
+}
+
+function restoreEditableScanTarget() {
+  if (!editableScanTarget || !editableScanTarget.isConnected) return;
+
+  editableScanTarget.value = editableScanStartValue;
+  if (
+    typeof editableScanSelectionStart === "number" &&
+    typeof editableScanSelectionEnd === "number"
+  ) {
+    editableScanTarget.setSelectionRange(
+      editableScanSelectionStart,
+      editableScanSelectionEnd
+    );
+  }
+}
+
+function resetScanState() {
+  scanBuffer = "";
+  lastScanKeyTime = 0;
+  rapidKeyCount = 0;
+  editableScanTarget = null;
+  editableScanStartValue = "";
+  editableScanSelectionStart = null;
+  editableScanSelectionEnd = null;
+}
+
+function handleScannedBox(rawValue) {
+  const scannedBoxId = normalizeScannedValue(rawValue);
+
+  if (!scannedBoxId) {
+    setFeedback(feedbackElement, "Scanned barcode did not contain a valid box number.", {
+      error: true,
+    });
+    return;
+  }
+
+  boxFields.addValue(scannedBoxId, { focus: false });
+  setFeedback(feedbackElement, `Scanned Box ${scannedBoxId} added.`, {
+    success: true,
+  });
+}
+
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.defaultPrevented || scannerInProgress) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    const currentTime = Date.now();
+    const isRapidInput =
+      currentTime - lastScanKeyTime <= SCAN_KEY_INTERVAL_MS;
+    const editableTarget = getEditableScanTarget(event.target);
+
+    if (event.key === "Enter" || event.key === "NumpadEnter") {
+      if (scanBuffer.length >= MIN_SCAN_LENGTH) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const bufferedValue = scanBuffer;
+        restoreEditableScanTarget();
+        resetScanState();
+        scannerInProgress = true;
+
+        try {
+          handleScannedBox(bufferedValue);
+        } finally {
+          scannerInProgress = false;
+        }
+      } else {
+        resetScanState();
+      }
+
+      return;
+    }
+
+    if (event.key.length !== 1) {
+      return;
+    }
+
+    if (!isRapidInput) {
+      resetScanState();
+    }
+
+    if (editableTarget) {
+      rememberEditableScanTarget(editableTarget);
+    }
+
+    rapidKeyCount = isRapidInput ? rapidKeyCount + 1 : 1;
+    scanBuffer += event.key;
+    lastScanKeyTime = currentTime;
+
+    if (editableTarget && rapidKeyCount >= MIN_SCAN_LENGTH) {
+      event.preventDefault();
+      event.stopPropagation();
+      restoreEditableScanTarget();
+    }
+  },
+  true
+);
