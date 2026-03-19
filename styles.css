@@ -435,6 +435,47 @@ select:focus {
   max-width: 100%;
 }
 
+.page-toolbar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 18px;
+}
+
+.scan-toggle {
+  min-width: 118px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.82rem;
+  background: linear-gradient(180deg, rgba(29, 29, 31, 0.1) 0%, rgba(29, 29, 31, 0.16) 100%);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.scan-toggle:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.scan-toggle.is-active {
+  background: linear-gradient(180deg, #ef3340 0%, var(--brand) 100%);
+  color: #ffffff;
+  border-color: rgba(215, 0, 21, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 22px rgba(215, 0, 21, 0.18);
+}
+
+:root[data-theme="dark"] .scan-toggle {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+:root[data-theme="dark"] .scan-toggle.is-active {
+  border-color: rgba(255, 128, 139, 0.22);
+}
+
 :root[data-theme="dark"] .metric-card,
 :root[data-theme="dark"] .insight-item,
 :root[data-theme="dark"] .summary-result-card,
@@ -2484,6 +2525,14 @@ body.popup-open {
     grid-template-columns: 1fr;
     gap: 10px;
     margin-bottom: 16px;
+  }
+
+  .page-toolbar {
+    margin-bottom: 16px;
+  }
+
+  .scan-toggle {
+    width: 100%;
   }
 
   .search-inline-controls {

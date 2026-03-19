@@ -31,13 +31,18 @@ const boxesContainer = document.getElementById("boxesContainer");
 const addBoxButton = document.getElementById("addBoxfield");
 const submitButton = document.getElementById("boxinbtn");
 const feedbackElement = document.getElementById("feedback");
+const scanModeToggleButton = document.getElementById("scanModeToggle");
 const SCAN_KEY_INTERVAL_MS = 50;
+const SCAN_IDLE_TIMEOUT_MS = 120;
 const MIN_SCAN_LENGTH = 3;
+const MIN_UNFOCUSED_SCAN_LENGTH = 1;
 
 let scanBuffer = "";
 let lastScanKeyTime = 0;
 let scannerInProgress = false;
+let scanModeEnabled = false;
 let rapidKeyCount = 0;
+let scanFinalizeTimeoutId = null;
 let editableScanTarget = null;
 let editableScanStartValue = "";
 let editableScanSelectionStart = null;
@@ -45,7 +50,17 @@ let editableScanSelectionEnd = null;
 
 const boxFields = initDynamicBoxFields(boxesContainer, addBoxButton);
 
+renderScanModeToggle();
 bindEnterToButton(submitButton);
+
+scanModeToggleButton?.addEventListener("click", () => {
+  scanModeEnabled = !scanModeEnabled;
+  if (scanModeEnabled) {
+    blurActiveEditableElement();
+  }
+  resetScanState();
+  renderScanModeToggle();
+});
 
 async function checkInBoxes(boxIDs, tempin = tempinInput.value.trim()) {
   if (!boxIDs.length) {
@@ -186,6 +201,7 @@ function restoreEditableScanTarget() {
 }
 
 function resetScanState() {
+  clearScanFinalizeTimeout();
   scanBuffer = "";
   lastScanKeyTime = 0;
   rapidKeyCount = 0;
@@ -195,7 +211,88 @@ function resetScanState() {
   editableScanSelectionEnd = null;
 }
 
-async function handleScannedBox(rawValue) {
+function blurActiveEditableElement() {
+  const activeElement = document.activeElement;
+  if (
+    activeElement instanceof HTMLInputElement ||
+    activeElement instanceof HTMLTextAreaElement ||
+    activeElement instanceof HTMLSelectElement
+  ) {
+    activeElement.blur();
+  }
+}
+
+function clearScanFinalizeTimeout() {
+  if (scanFinalizeTimeoutId === null) return;
+
+  window.clearTimeout(scanFinalizeTimeoutId);
+  scanFinalizeTimeoutId = null;
+}
+
+function canFinalizeBufferedScan(allowSingleCharacter = false) {
+  if (scanBuffer.length >= MIN_SCAN_LENGTH) {
+    return true;
+  }
+
+  if (allowSingleCharacter) {
+    return scanBuffer.length >= MIN_UNFOCUSED_SCAN_LENGTH;
+  }
+
+  return !editableScanTarget && scanBuffer.length >= MIN_UNFOCUSED_SCAN_LENGTH;
+}
+
+function finalizeBufferedScan(allowSingleCharacter = false) {
+  if (scannerInProgress || !canFinalizeBufferedScan(allowSingleCharacter)) {
+    resetScanState();
+    return;
+  }
+
+  const bufferedValue = scanBuffer;
+  restoreEditableScanTarget();
+  resetScanState();
+  scannerInProgress = true;
+
+  try {
+    handleScannedBox(bufferedValue);
+  } finally {
+    scannerInProgress = false;
+  }
+}
+
+function scheduleBufferedScanFinalization() {
+  clearScanFinalizeTimeout();
+
+  if (!canFinalizeBufferedScan()) {
+    return;
+  }
+
+  scanFinalizeTimeoutId = window.setTimeout(() => {
+    scanFinalizeTimeoutId = null;
+    finalizeBufferedScan();
+  }, SCAN_IDLE_TIMEOUT_MS);
+}
+
+function hasPendingScanSequence() {
+  if (!scanBuffer.length) {
+    return false;
+  }
+
+  if (scanFinalizeTimeoutId !== null) {
+    return true;
+  }
+
+  return Date.now() - lastScanKeyTime <= SCAN_KEY_INTERVAL_MS;
+}
+
+function renderScanModeToggle() {
+  if (!scanModeToggleButton) return;
+
+  scanModeToggleButton.textContent = scanModeEnabled ? "SCAN: ON:" : "SCAN: OFF";
+  scanModeToggleButton.setAttribute("aria-pressed", String(scanModeEnabled));
+  scanModeToggleButton.classList.toggle("is-active", scanModeEnabled);
+}
+
+function handleScannedBox(rawValue) {
   const scannedBoxId = normalizeScannedValue(rawValue);
 
   if (!scannedBoxId) {
@@ -205,7 +302,7 @@ async function handleScannedBox(rawValue) {
     return;
   }
 
-  await checkInBoxes([scannedBoxId]);
+  boxFields.addValue(scannedBoxId, { focus: false });
 }
 
 submitButton.addEventListener("click", async () => {
@@ -215,6 +312,7 @@ submitButton.addEventListener("click", async () => {
 document.addEventListener(
   "keydown",
   async (event) => {
+    if (!scanModeEnabled) return;
     if (event.defaultPrevented || scannerInProgress) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -224,22 +322,10 @@ document.addEventListener(
     const editableTarget = getEditableScanTarget(event.target);
 
     if (event.key === "Enter" || event.key === "NumpadEnter") {
-      if (scanBuffer.length >= MIN_SCAN_LENGTH) {
+      if (hasPendingScanSequence()) {
         event.preventDefault();
         event.stopPropagation();
-
-        const bufferedValue = scanBuffer;
-        restoreEditableScanTarget();
-        resetScanState();
-        scannerInProgress = true;
-
-        try {
-          await handleScannedBox(bufferedValue);
-        } finally {
-          scannerInProgress = false;
-        }
-      } else {
-        resetScanState();
+        finalizeBufferedScan(true);
       }
 
       return;
@@ -260,6 +346,7 @@ document.addEventListener(
     rapidKeyCount = isRapidInput ? rapidKeyCount + 1 : 1;
     scanBuffer += event.key;
     lastScanKeyTime = currentTime;
+    scheduleBufferedScanFinalization();
 
     if (editableTarget && rapidKeyCount >= MIN_SCAN_LENGTH) {
       event.preventDefault();
