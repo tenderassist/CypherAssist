@@ -56,6 +56,61 @@
       <button id="resetbtn">Reset</button>
     </main>
 
+    <div class="alert-popup reset-confirm-popup" id="resetConfirmPopup">
+      <div class="alert-popup-backdrop" data-reset-close></div>
+      <div
+        class="alert-popup-card reset-confirm-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="resetConfirmTitle"
+        aria-describedby="resetConfirmCopy"
+      >
+        <div class="alert-popup-head reset-confirm-head">
+          <div class="reset-confirm-title-group">
+            <span class="alert-popup-eyebrow reset-confirm-eyebrow">Reset Confirmation</span>
+            <h3 id="resetConfirmTitle">Reset all box and office activity?</h3>
+            <p class="alert-popup-copy reset-confirm-copy" id="resetConfirmCopy">
+              This will clear every box and office history entry and return all boxes to
+              <strong>In Safe status</strong>. This action cannot be undone.
+            </p>
+          </div>
+          <button
+            class="alert-popup-close"
+            type="button"
+            aria-label="Close reset confirmation"
+            data-reset-close
+          >
+            x
+          </button>
+        </div>
+        <div class="reset-confirm-highlights" aria-hidden="true">
+          <div class="reset-confirm-highlight">
+            <span class="reset-confirm-highlight-label">Boxes</span>
+            <strong>History wiped</strong>
+          </div>
+          <div class="reset-confirm-highlight">
+            <span class="reset-confirm-highlight-label">Status</span>
+            <strong>Return to In Safe status</strong>
+          </div>
+          <div class="reset-confirm-highlight">
+            <span class="reset-confirm-highlight-label">Offices</span>
+            <strong>History wiped</strong>
+          </div>
+        </div>
+        <p class="reset-confirm-note">
+          Select cancel to leave all records and statuses exactly as they are.
+        </p>
+        <div class="reset-confirm-actions">
+          <button type="button" class="reset-confirm-cancel" data-reset-close>
+            Cancel
+          </button>
+          <button type="button" class="reset-confirm-submit" id="confirmResetBtn">
+            Yes, reset everything
+          </button>
+        </div>
+      </div>
+    </div>
+
     <a class="back-to-top" href="#top" aria-label="Back to top"></a>
 
     <footer class="app-stamp">

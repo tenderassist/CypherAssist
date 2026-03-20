@@ -289,14 +289,12 @@ function renderDashboard() {
   const checkedOutCount = Math.max(0, totalBoxes - inSafeCount);
   const safePercentage =
     totalBoxes === 0 ? 0 : Math.round((inSafeCount / totalBoxes) * 100);
-  const activeOfficesCount = officeEntries.filter(([, officeData]) => {
-    return parseJsonArray(officeData.officecurrent).length > 0;
-  }).length;
+  const totalOfficesCount = officeEntries.length;
 
   totalBoxesElement.textContent = totalBoxes;
   inSafeCountElement.textContent = inSafeCount;
   checkedOutCountElement.textContent = checkedOutCount;
-  activeOfficesCountElement.textContent = activeOfficesCount;
+  activeOfficesCountElement.textContent = totalOfficesCount;
   safePercentageElement.textContent = `${safePercentage}%`;
   legendSafeCountElement.textContent = inSafeCount;
   legendOutCountElement.textContent = checkedOutCount;
