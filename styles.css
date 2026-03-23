@@ -2275,10 +2275,8 @@ body.login-page .page-panel {
 }
 
 .reset-confirm-head {
-  position: relative;
   align-items: flex-start;
   margin-bottom: 18px;
-  padding-right: 56px;
 }
 
 .reset-confirm-title-group {
@@ -2395,9 +2393,7 @@ body.login-page .page-panel {
 }
 
 .logout-confirm-head {
-  position: relative;
   margin-bottom: 12px;
-  padding-right: 56px;
 }
 
 .logout-confirm-title-group {
@@ -2648,24 +2644,6 @@ body.login-page .page-panel {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-:root[data-theme="dark"] .office-filter-option {
-  background: rgba(32, 35, 43, 0.9);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-:root[data-theme="dark"] .office-filter-option:hover {
-  border-color: rgba(255, 128, 139, 0.24);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 3px rgba(255, 128, 139, 0.14);
-}
-
-:root[data-theme="dark"] .office-filter-reset {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text);
-}
-
 :root[data-theme="dark"] .reset-confirm-card {
   border-color: rgba(255, 255, 255, 0.08);
   background:
@@ -2801,7 +2779,7 @@ body.popup-open {
   }
 
   .reset-confirm-highlights {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .reset-confirm-highlight {
@@ -2809,32 +2787,13 @@ body.popup-open {
   }
 
   .reset-confirm-actions {
-    flex-direction: row;
-    justify-content: flex-end;
+    flex-direction: column-reverse;
   }
 
   .reset-confirm-cancel,
   .reset-confirm-submit {
-    width: auto;
-    min-width: 140px;
-  }
-
-  .reset-confirm-head {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .reset-confirm-head > div {
-    flex: 1;
+    width: 100%;
     min-width: 0;
-  }
-
-  .reset-confirm-head .alert-popup-close {
-    position: absolute;
-    top: 0;
-    right: 0;
-    align-self: flex-start;
-    margin-left: 0;
   }
 
   .logout-confirm-actions {
@@ -2845,35 +2804,6 @@ body.popup-open {
   .logout-confirm-submit {
     width: 100%;
     min-width: 0;
-  }
-
-  .logout-confirm-head {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .logout-confirm-head > div {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .logout-confirm-head .alert-popup-close {
-    position: absolute;
-    top: 0;
-    right: 0;
-    align-self: flex-start;
-    margin-left: 0;
-  }
-
-  .logout-confirm-actions {
-    flex-direction: row;
-    justify-content: flex-end;
-  }
-
-  .logout-confirm-cancel,
-  .logout-confirm-submit {
-    width: auto;
-    min-width: 140px;
   }
 }
 
