@@ -33,12 +33,12 @@ popup.innerHTML = `
     <div class="alert-popup-head">
       <div>
         <span class="alert-popup-eyebrow">&#x26A0;&#xFE0E;WARNING!!!</span>
-        <h3 id="alertPopupTitle">Outstanding Box Alert</h3>
+        <h3 id="alertPopupTitle">Outstanding Item Alert</h3>
       </div>
       <button class="alert-popup-close" type="button" aria-label="Close alert" data-alert-close>x</button>
     </div>
     <p class="alert-popup-copy">
-      One or more boxes have been out for longer than 60 minutes.
+      One or more items have been out for longer than 60 minutes.
     </p>
     <div class="alert-popup-list" id="alertPopupList"></div>
   </div>
@@ -59,14 +59,15 @@ function updateOverdueCounter(overdueBoxes) {
 
   const count = overdueBoxes.length;
   overdueCounterLink.textContent = `\u26A0 ${count} ${
-    count === 1 ? "box" : "boxes"
+    count === 1 ? "item" : "items"
   } overdue`;
   overdueCounterLink.hidden = false;
 }
 
-function handleOutstandingAlertError(message, error) {
+function handleOutstandingAlertError() {
   updateOverdueCounter([]);
-  console.error(message, error);
+  closePopup();
+  popupList.innerHTML = "";
 }
 
 function getAlertedKeys() {
@@ -79,7 +80,11 @@ function getAlertedKeys() {
 }
 
 function saveAlertedKeys(keys) {
-  localStorage.setItem(ALERT_STORAGE_KEY, JSON.stringify([...keys]));
+  try {
+    localStorage.setItem(ALERT_STORAGE_KEY, JSON.stringify([...keys]));
+  } catch {
+    // Ignore storage persistence failures and continue showing live alerts.
+  }
 }
 
 function closePopup() {
@@ -155,7 +160,7 @@ async function checkOutstandingAlerts() {
     .map(
       (box) => `
         <article class="alert-popup-item">
-          <div class="alert-popup-item-head">BOX ${escapeHtml(box.boxnum)}</div>
+          <div class="alert-popup-item-head">ITEM ${escapeHtml(box.boxnum)}</div>
           <div class="alert-popup-item-row">
             <span>Office</span>
             <strong>${escapeHtml(box.office)}</strong>
@@ -174,12 +179,12 @@ async function checkOutstandingAlerts() {
   popup.classList.add("alert-popup-visible");
 }
 
-checkOutstandingAlerts().catch((error) => {
-  handleOutstandingAlertError("Outstanding alert check failed:", error);
+checkOutstandingAlerts().catch(() => {
+  handleOutstandingAlertError();
 });
 
 window.setInterval(() => {
-  checkOutstandingAlerts().catch((error) => {
-    handleOutstandingAlertError("Outstanding alert refresh failed:", error);
+  checkOutstandingAlerts().catch(() => {
+    handleOutstandingAlertError();
   });
 }, 60000);

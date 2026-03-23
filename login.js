@@ -118,7 +118,6 @@ if (form) {
       setFeedback("Signed in. Redirecting...", { success: true });
       window.location.replace(getRedirectTarget("./index.html"));
     } catch (error) {
-      console.error("Sign-in failed:", error);
       setFeedback(getAuthErrorMessage(error), { error: true });
     } finally {
       setButtonBusy(submitButton, false, "Sign in", "Signing in...");
@@ -151,7 +150,6 @@ if (forgotPasswordButton) {
         success: true,
       });
     } catch (error) {
-      console.error("Password reset failed:", error);
       setFeedback(getPasswordResetMessage(error), { error: true });
     } finally {
       forgotPasswordButton.textContent = "Forgot password?";

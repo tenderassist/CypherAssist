@@ -30,7 +30,7 @@ checkButton.addEventListener("click", async () => {
     feedbackDiv,
     `
       <div class="outstanding-state">
-        Checking outstanding boxes...
+        Checking outstanding items...
       </div>
     `,
     { html: true }
@@ -44,7 +44,7 @@ checkButton.addEventListener("click", async () => {
         feedbackDiv,
         `
           <div class="outstanding-state">
-            No outstanding boxes.
+            No outstanding items.
           </div>
         `,
         { html: true }
@@ -73,15 +73,9 @@ checkButton.addEventListener("click", async () => {
     });
 
     if (!outstandingBoxes.length) {
-      setFeedback(
-        feedbackDiv,
-        `
-          <div class="outstanding-state">
-            No boxes have been out for more than 60 minutes.
-          </div>
-        `,
-        { html: true }
-      );
+      setFeedback(feedbackDiv, "No items have been out for more than 60 minutes.", {
+        error: true,
+      });
       return;
     }
 
@@ -92,7 +86,7 @@ checkButton.addEventListener("click", async () => {
         (box) => `
           <article class="outstanding-item">
             <div class="outstanding-item-head">
-              <span class="outstanding-badge">BOX/SPECIAL ${escapeHtml(
+              <span class="outstanding-badge">ITEM ${escapeHtml(
                 box.boxnum
               )}</span>
             </div>
@@ -104,7 +98,7 @@ checkButton.addEventListener("click", async () => {
                 )}</strong>
               </div>
               <div class="outstanding-row">
-                <span class="outstanding-label">Checked Out</span>
+                <span class="outstanding-label">Booked Out</span>
                 <strong class="outstanding-value">${escapeHtml(
                   box.boxtimeout
                 )}</strong>
@@ -125,13 +119,12 @@ checkButton.addEventListener("click", async () => {
         <div class="summary-result-card outstanding-result-card">
           <div class="summary-result-head">
             <span class="summary-result-eyebrow">Outstanding</span>
-            <h3>Boxes Out Longer Than 60 Minutes</h3>
+            <h3>Items Out Longer Than 60 Minutes</h3>
           </div>
           <div class="summary-seen-boxes">
             <div class="summary-section-head">
-              <span class="summary-section-title">Total Boxes</span>
-              <span class="status-total">
-                <span class="status-total-label">Total:</span>
+              <span class="summary-section-title">
+                Total Items:
                 <span class="status-count">${outstandingBoxes.length}</span>
               </span>
             </div>
@@ -142,7 +135,6 @@ checkButton.addEventListener("click", async () => {
       { html: true }
     );
   } catch (error) {
-    console.error("Error fetching outstanding boxes:", error);
     setFeedback(feedbackDiv, "Error retrieving data. Please try again.", {
       error: true,
     });

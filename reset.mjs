@@ -104,7 +104,6 @@ async function performReset() {
     });
     shouldClosePopup = true;
   } catch (error) {
-    console.error("Error resetting data:", error);
     setFeedback(feedbackElement, "Error resetting data. Please try again.", {
       error: true,
     });

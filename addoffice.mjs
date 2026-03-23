@@ -115,7 +115,7 @@ submitButton.addEventListener("click", async () => {
       const activeBoxList = sortNumericStrings(activeBoxes.map(([boxID]) => boxID)).join(", ");
       setFeedback(
         feedbackElement,
-        `Office ${officeID} still has active boxes assigned: ${activeBoxList}. Check them in or move them before deleting the office.`,
+        `Office ${officeID} still has active items assigned: ${activeBoxList}. Check them in or move them before deleting the office.`,
         { error: true }
       );
       return;
@@ -127,7 +127,6 @@ submitButton.addEventListener("click", async () => {
       success: true,
     });
   } catch (error) {
-    console.error("Error updating offices:", error);
     setFeedback(
       feedbackElement,
       "Could not update offices. Please try again.",

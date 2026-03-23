@@ -39,42 +39,61 @@
     <div id="quicksearchResult"></div>
 
     <nav class="navbar">
-      <a class="navitem" href="addbox.html">Add/Delete Items</a>
-      <a class="navitem-active">Add/Delete Offices</a>
-      <a class="navitem" href="reset.html">Reset</a>
-      <a class="navitem" href="index.html">Back to work</a>
+      <a class="navitem" href="index.html">Home</a>
+      <a class="navitem" href="itemin.html">Item In</a>
+      <a class="navitem-active">Item Out</a>
+      <a class="navitem" href="searchbox.html">Search</a>
+      <a class="navitem" href="itemsummary.html">Item Summary</a>
+      <a class="navitem" href="officesummary.html">Office Summary</a>
+      <a class="navitem" href="outstanding.html">Outstanding</a>
     </nav>
 
     <main class="page-panel">
-      <h2>Add/Delete Offices</h2>
+      <div class="page-toolbar">
+        <button
+          class="scan-toggle"
+          id="scanModeToggle"
+          type="button"
+          aria-pressed="false"
+        >
+          SCAN: OFF
+        </button>
+      </div>
+      <h2>Item Out</h2>
       <p class="page-intro">
-        Maintain the live list of active offices available.
+        Check items out to an office and keep information up to date.
       </p>
-      <div id="officelist"></div>
-
       <div class="field-row">
-        <span class="field-label">Action</span>
-        <select id="adddeloffice">
-          <option>Select...</option>
-          <option value="add">Add</option>
-          <option value="delete">Delete</option>
-        </select>
+        <span class="field-label">Name</span>
+        <input
+          type="text"
+          autocomplete="off"
+          id="tempout"
+          class="input"
+          placeholder="e.g. John"
+        />
       </div>
 
       <div class="field-row">
-        <span class="field-label">Office Number</span>
+        <span class="field-label">Office</span>
         <input
           type="number"
           autocomplete="off"
-          id="adddeloffnum"
+          id="outoffnum"
           class="input"
           placeholder="e.g. 24"
         />
       </div>
 
-      <button id="adddeloffbtn">Enter</button>
+      <div class="field-row inline-action">
+        <span class="field-label">Items</span>
+        <button class="plus-button" id="addBoxfield" tabindex="-1">+</button>
+      </div>
+      <div id="boxesContainer"></div>
 
       <a id="feedback"></a>
+
+      <button id="boxoutbtn" tabindex="-1">Enter</button>
     </main>
 
     <a class="back-to-top" href="#top" aria-label="Back to top"></a>
@@ -84,8 +103,9 @@
       <p>Created by S.G. Van Schalkwyk</p>
     </footer>
 
-    <script src="./addoffice.mjs" type="module"></script>
+    <script src="./itemout.mjs" type="module"></script>
     <script src="./theme.mjs" type="module"></script>
     <script src="./backtotop.mjs" type="module"></script>
+    <script src="./outstandingalert.mjs" type="module"></script>
   </body>
 </html>

@@ -62,7 +62,7 @@ function initQuickSearch(db, user) {
       if (requestId !== lastRequestId) return;
 
       if (!snapshot.exists()) {
-        resultDiv.textContent = "Box not found in database.";
+        resultDiv.textContent = "Item not found in database.";
         positionResult();
         resultDiv.classList.add("active", "error");
         return;
@@ -70,14 +70,16 @@ function initQuickSearch(db, user) {
 
       const quickboxData = snapshot.val();
       const quickoffice = quickboxData.boxoffice || "No office assigned";
+      const isInSafe = String(quickoffice).toLowerCase() === "in safe";
 
-      resultDiv.textContent = `${quickboxID} is in Office: ${quickoffice}`;
+      resultDiv.textContent = isInSafe
+        ? `Item ${quickboxID} is in the Safe`
+        : `Item ${quickboxID} is in Office: ${quickoffice}`;
       positionResult();
       resultDiv.classList.add("active");
       resultDiv.classList.remove("error");
     } catch (error) {
       if (requestId !== lastRequestId) return;
-      console.error("Error fetching data:", error);
       resultDiv.textContent = "Error retrieving data.";
       positionResult();
       resultDiv.classList.add("active", "error");

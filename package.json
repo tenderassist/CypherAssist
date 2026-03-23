@@ -8,9 +8,9 @@
     "login.html",
     "addbox.html",
     "addoffice.html",
-    "boxin.html",
-    "boxout.html",
-    "boxsummary.html",
+    "itemin.html",
+    "itemout.html",
+    "itemsummary.html",
     "officesummary.html",
     "outstanding.html",
     "reset.html",
@@ -21,7 +21,7 @@
   },
   "scripts": {
     "dev": "parcel serve index.html",
-    "build": "parcel build index.html login.html addbox.html addoffice.html boxin.html boxout.html boxsummary.html officesummary.html outstanding.html reset.html searchbox.html --no-source-maps"
+    "build": "parcel build index.html login.html addbox.html addoffice.html itemin.html itemout.html itemsummary.html officesummary.html outstanding.html reset.html searchbox.html --no-source-maps"
   },
   "devDependencies": {
     "firebase": "^10.12.5",
