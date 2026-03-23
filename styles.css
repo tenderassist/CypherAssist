@@ -3479,7 +3479,12 @@ body.popup-open {
   .status-chip-button {
     width: auto;
     max-width: 100%;
-    justify-content: flex-start;
+  }
+
+  .status-chip-button {
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
   }
 
   .office-filter-list {
