@@ -112,7 +112,7 @@ async function performReset() {
     isResetting = false;
     resetButton.disabled = false;
     confirmResetButton.disabled = false;
-    confirmResetButton.textContent = "Yes, reset everything";
+    confirmResetButton.textContent = "Reset";
 
     if (shouldClosePopup) {
       closeResetPopup();
