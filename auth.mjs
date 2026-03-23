@@ -186,7 +186,6 @@ function ensureLogoutDialog() {
       await signOut(auth);
       redirectTo(LOGIN_PAGE_PATH);
     } catch (error) {
-      console.error("Failed to sign out:", error);
       setLogoutButtonState(false);
     }
   });
