@@ -45,23 +45,23 @@ const insightCardElements = document.querySelectorAll(".interactive-insight-card
 
 const INSIGHT_DEFINITIONS = {
   topBoxes: {
-    title: "Top 20: Most Booked Out Boxes",
-    description: "Boxes with the highest booking activity for the day.",
-    emptyText: "No box booking history available yet.",
+    title: "Top 20: Most Booked Out Items",
+    description: "Items with the highest booking activity.",
+    emptyText: "No item booking history available yet.",
     itemLabel: "bookings",
     container: topBoxesListElement,
   },
   topOffices: {
     title: "Top 20: Busiest Offices",
-    description: "Offices that have received the most boxes/specials.",
+    description: "Offices that have received the most items.",
     emptyText: "No office activity available yet.",
-    itemLabel: "boxes",
+    itemLabel: "items",
     container: topOfficesListElement,
   },
   favouriteBoxes: {
-    title: "Top 20: Favourite Boxes",
-    description: "Boxes that have spent the longest total time in offices today.",
-    emptyText: "No box office-duration data available yet.",
+    title: "Top 20: Favourite Items",
+    description: "Items that have spent the longest total time in offices.",
+    emptyText: "No item office-duration data available yet.",
     itemLabel: "total",
     container: favouriteBoxesListElement,
     renderOptions: {
@@ -71,8 +71,8 @@ const INSIGHT_DEFINITIONS = {
   },
   naughtyOffices: {
     title: "Top 20: Naughty List",
-    description: "Offices with the most overdue box holds of 120 minutes or more.",
-    emptyText: "No offices have kept boxes for 120 minutes or longer yet.",
+    description: "Offices with the most overdue item holds of 120 minutes or more.",
+    emptyText: "No offices have kept items for 120 minutes or longer yet.",
     itemLabel: "instances",
     container: naughtyOfficesListElement,
     renderOptions: {
@@ -289,14 +289,12 @@ function renderDashboard() {
   const checkedOutCount = Math.max(0, totalBoxes - inSafeCount);
   const safePercentage =
     totalBoxes === 0 ? 0 : Math.round((inSafeCount / totalBoxes) * 100);
-  const activeOfficesCount = officeEntries.filter(([, officeData]) => {
-    return parseJsonArray(officeData.officecurrent).length > 0;
-  }).length;
+  const totalOfficesCount = officeEntries.length;
 
   totalBoxesElement.textContent = totalBoxes;
   inSafeCountElement.textContent = inSafeCount;
   checkedOutCountElement.textContent = checkedOutCount;
-  activeOfficesCountElement.textContent = activeOfficesCount;
+  activeOfficesCountElement.textContent = totalOfficesCount;
   safePercentageElement.textContent = `${safePercentage}%`;
   legendSafeCountElement.textContent = inSafeCount;
   legendOutCountElement.textContent = checkedOutCount;
@@ -305,7 +303,7 @@ function renderDashboard() {
 
   const topBoxes = boxEntries
     .map(([boxId, boxData]) => ({
-      label: `Box ${boxData.boxnum || boxId}`,
+      label: `Item ${boxData.boxnum || boxId}`,
       count: parseJsonArray(boxData.boxhistory).length,
     }))
     .filter((item) => item.count > 0)
@@ -365,7 +363,7 @@ function renderDashboard() {
 
   const favouriteBoxes = [...favouriteBoxesTotals.entries()]
     .map(([boxLabel, count]) => ({
-      label: `Box ${boxLabel}`,
+      label: `Item ${boxLabel}`,
       count,
     }))
     .sort((a, b) => b.count - a.count)

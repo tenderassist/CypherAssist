@@ -42,10 +42,10 @@
 
     <nav class="navbar">
       <a class="navitem-active">Home</a>
-      <a class="navitem" href="boxin.html">Box In</a>
-      <a class="navitem" href="boxout.html">Box Out</a>
+      <a class="navitem" href="itemin.html">Item In</a>
+      <a class="navitem" href="itemout.html">Item Out</a>
       <a class="navitem" href="searchbox.html">Search</a>
-      <a class="navitem" href="boxsummary.html">Box Summary</a>
+      <a class="navitem" href="itemsummary.html">Item Summary</a>
       <a class="navitem" href="officesummary.html">Office Summary</a>
       <a class="navitem" href="outstanding.html">Outstanding</a>
       <a class="navitem" href="addbox.html">Admin</a>
@@ -54,11 +54,11 @@
     <main class="page-panel">
       <h2>Welcome to Cypher</h2>
       <p class="page-intro">
-        New look, New functions, New Feel. I hope you like the changes :)
+        Item Tracking Simplified
       </p>
       <section class="dashboard-grid">
         <div class="metric-card metric-card-stat">
-          <span class="metric-label">Total Boxes & Specials</span>
+          <span class="metric-label">Total Items</span>
           <strong class="metric-value" id="totalBoxes">0</strong>
         </div>
         <div class="metric-card metric-card-stat">
@@ -66,19 +66,19 @@
           <strong class="metric-value" id="inSafeCount">0</strong>
         </div>
         <div class="metric-card metric-card-stat">
-          <span class="metric-label">Checked Out</span>
+          <span class="metric-label">Booked Out</span>
           <strong class="metric-value" id="checkedOutCount">0</strong>
         </div>
         <div class="metric-card metric-card-stat">
-          <span class="metric-label">Active Offices</span>
+          <span class="metric-label">Offices</span>
           <strong class="metric-value" id="activeOfficesCount">0</strong>
         </div>
 
         <section class="metric-card metric-card-wide">
           <div class="metric-header">
             <div>
-              <h3>Box Status Split</h3>
-              <p>How many boxes are currently in the safe versus checked out.</p>
+              <h3>Item Status Split</h3>
+              <p>How many items are currently in the safe versus booked out.</p>
             </div>
           </div>
           <div class="gauge-layout">
@@ -98,7 +98,7 @@
               </div>
               <div class="legend-row">
                 <span class="legend-key legend-key-out"></span>
-                <span>Checked Out</span>
+                <span>Booked Out</span>
                 <strong id="legendOutCount">0</strong>
               </div>
               <div class="legend-row">
@@ -119,8 +119,8 @@
         >
           <div class="metric-header">
             <div>
-              <h3>Most Booked Out Boxes</h3>
-              <p>Boxes with the highest booking activity for the day.</p>
+              <h3>Most Booked Out Items</h3>
+              <p>Items with the highest booking activity.</p>
             </div>
           </div>
           <div class="insight-list" id="topBoxesList"></div>
@@ -136,7 +136,7 @@
           <div class="metric-header">
             <div>
               <h3>Busiest Offices</h3>
-              <p>Offices that have received the most boxes/specials.</p>
+              <p>Offices that have received the most items.</p>
             </div>
           </div>
           <div class="insight-list" id="topOfficesList"></div>
@@ -151,8 +151,8 @@
         >
           <div class="metric-header">
             <div>
-              <h3>Favourite Boxes</h3>
-              <p>Boxes that have spent the longest total time in offices today.</p>
+              <h3>Favourite Items</h3>
+              <p>Items that have spent the longest total time in offices.</p>
             </div>
           </div>
           <div class="insight-list" id="favouriteBoxesList"></div>
@@ -168,7 +168,7 @@
           <div class="metric-header">
             <div>
               <h3>Naughty List</h3>
-              <p>Offices with the most overdue box holds of 120 minutes or more.</p>
+              <p>Offices with the most overdue item holds of 120 minutes or more.</p>
             </div>
           </div>
           <div class="insight-list" id="naughtyOfficesList"></div>
@@ -179,8 +179,8 @@
     <a class="back-to-top" href="#top" aria-label="Back to top"></a>
 
     <footer class="app-stamp">
-      <p>Cypher v3.2 &bull; Created by Seth Garreth Van Schalkwyk</p>
-      <p>Quietly working behind the scenes ;)</p>
+      <p>Cypher v3.2 &bull; Item Tracking Simplified</p>
+      <p>Created by S.G. Van Schalkwyk</p>
     </footer>
 
     <script src="./index.mjs" type="module"></script>

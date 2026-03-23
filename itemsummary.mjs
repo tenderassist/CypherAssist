@@ -14,25 +14,23 @@ import {
 } from "./utils.mjs";
 import {
   getBoxesCollectionPath,
-  getOfficesCollectionPath,
   requireAuth,
 } from "./auth.mjs";
 
 const user = await requireAuth();
 const boxesCollectionPath = getBoxesCollectionPath(user);
-const officesCollectionPath = getOfficesCollectionPath(user);
 
 initQuickSearch(db, user);
 
-const searchButton = document.getElementById("searchoffbtn");
-const searchInput = document.getElementById("searchoffnum");
+const searchButton = document.getElementById("searchboxbtn");
+const searchInput = document.getElementById("searchboxnum");
 const feedbackDiv = document.getElementById("feedback");
-const officeSummaryState = {
-  officeID: "",
-  currentBoxes: [],
-  uniqueBoxes: [],
+const itemSummaryState = {
+  itemID: "",
+  currentOffice: "",
+  uniqueOffices: [],
   enrichedHistory: [],
-  selectedBoxes: null,
+  selectedOffices: null,
 };
 let activeHistoryEntry = null;
 let activeHistoryChip = null;
@@ -40,48 +38,48 @@ let historyHighlightTimeoutId = null;
 let lastFilterTrigger = null;
 
 const filterPopup = document.createElement("div");
-filterPopup.className = "alert-popup office-filter-popup";
+filterPopup.className = "alert-popup item-filter-popup";
 filterPopup.innerHTML = `
-  <div class="alert-popup-backdrop" data-office-filter-close></div>
+  <div class="alert-popup-backdrop" data-item-filter-close></div>
   <div
     class="alert-popup-card office-filter-card"
     role="dialog"
     aria-modal="true"
-    aria-labelledby="officeFilterTitle"
-    aria-describedby="officeFilterCopy"
+    aria-labelledby="itemFilterTitle"
+    aria-describedby="itemFilterCopy"
     data-ignore-enter
   >
     <div class="alert-popup-head">
       <div>
         <span class="alert-popup-eyebrow">Filter</span>
-        <h3 id="officeFilterTitle">Filter Item Logs</h3>
+        <h3 id="itemFilterTitle">Filter Office Logs</h3>
       </div>
       <button
         class="alert-popup-close"
         type="button"
-        aria-label="Close item filter"
-        data-office-filter-close
+        aria-label="Close office filter"
+        data-item-filter-close
       >
         x
       </button>
     </div>
-    <p class="alert-popup-copy" id="officeFilterCopy">
-      Select the items you want to include in the office log view.
+    <p class="alert-popup-copy" id="itemFilterCopy">
+      Select the offices you want to include in the item log view.
     </p>
-    <div class="office-filter-summary" id="officeFilterSummary"></div>
-    <div class="alert-popup-list office-filter-list" id="officeFilterList"></div>
+    <div class="office-filter-summary" id="itemFilterSummary"></div>
+    <div class="alert-popup-list office-filter-list" id="itemFilterList"></div>
     <div class="office-filter-actions">
       <button
         type="button"
         class="office-filter-action office-filter-reset"
-        id="officeFilterResetBtn"
+        id="itemFilterResetBtn"
       >
         Reset
       </button>
       <button
         type="button"
         class="office-filter-action office-filter-apply"
-        id="officeFilterApplyBtn"
+        id="itemFilterApplyBtn"
       >
         Apply Filter
       </button>
@@ -91,10 +89,10 @@ filterPopup.innerHTML = `
 
 document.body.appendChild(filterPopup);
 
-const filterListElement = document.getElementById("officeFilterList");
-const filterSummaryElement = document.getElementById("officeFilterSummary");
-const filterResetButton = document.getElementById("officeFilterResetBtn");
-const filterApplyButton = document.getElementById("officeFilterApplyBtn");
+const filterListElement = document.getElementById("itemFilterList");
+const filterSummaryElement = document.getElementById("itemFilterSummary");
+const filterResetButton = document.getElementById("itemFilterResetBtn");
+const filterApplyButton = document.getElementById("itemFilterApplyBtn");
 
 function buildHistoryId(...parts) {
   return parts
@@ -134,6 +132,32 @@ function getClockDifference(startTime, endTime) {
     : startMinutesAgo + (24 * 60 - endMinutesAgo);
 }
 
+function getCheckedOutName(record, boxData, nextEntry) {
+  if (record?.name) return String(record.name);
+
+  const isLatestRecordedCheckout =
+    !nextEntry && String(boxData.boxtimeout || "") === String(record.time || "");
+
+  return isLatestRecordedCheckout ? String(boxData.boxtempout || "") : "";
+}
+
+function getRetrievedName(record, boxData, nextEntry) {
+  if (nextEntry?.name) return String(nextEntry.name);
+
+  const wasRetrievedIntoSafe =
+    String(boxData.boxoffice).toLowerCase() === "in safe" &&
+    String(boxData.boxtimein || "") === String(record.retrievedTime || "");
+
+  if (wasRetrievedIntoSafe) {
+    return String(boxData.boxtempin || "");
+  }
+
+  const isLatestRecordedMove =
+    nextEntry && String(boxData.boxtimeout || "") === String(nextEntry.time || "");
+
+  return isLatestRecordedMove ? String(boxData.boxtempout || "") : "";
+}
+
 function clearHistoryHighlightState() {
   if (historyHighlightTimeoutId) {
     window.clearTimeout(historyHighlightTimeoutId);
@@ -150,39 +174,39 @@ function setFilterPopupOpenState(isOpen) {
 }
 
 function getActiveFilterSelection() {
-  return new Set(officeSummaryState.selectedBoxes ?? []);
+  return new Set(itemSummaryState.selectedOffices ?? []);
 }
 
 function renderFilterPopup() {
-  const selectableBoxes = officeSummaryState.uniqueBoxes;
+  const selectableOffices = itemSummaryState.uniqueOffices;
   const activeSelection = getActiveFilterSelection();
-  const selectedCount = [...activeSelection].filter((box) =>
-    selectableBoxes.includes(box)
+  const selectedCount = [...activeSelection].filter((office) =>
+    selectableOffices.includes(office)
   ).length;
 
-  if (!selectableBoxes.length) {
-    filterSummaryElement.textContent = "No items are available to filter yet.";
-    filterListElement.innerHTML = `<div class="status-empty">Search for an office with recorded item activity first.</div>`;
+  if (!selectableOffices.length) {
+    filterSummaryElement.textContent = "No offices are available to filter yet.";
+    filterListElement.innerHTML = `<div class="status-empty">Search for an item with recorded office activity first.</div>`;
     filterApplyButton.disabled = true;
     filterResetButton.disabled = true;
     return;
   }
 
   filterSummaryElement.textContent =
-    selectedCount === 0 || selectedCount === selectableBoxes.length
-      ? `Showing all ${selectableBoxes.length} items.`
-      : `Showing ${selectedCount} of ${selectableBoxes.length} items.`;
+    selectedCount === 0 || selectedCount === selectableOffices.length
+      ? `Showing all ${selectableOffices.length} offices.`
+      : `Showing ${selectedCount} of ${selectableOffices.length} offices.`;
 
-  filterListElement.innerHTML = selectableBoxes
+  filterListElement.innerHTML = selectableOffices
     .map(
-      (box) => `
+      (office) => `
         <label class="office-filter-option">
           <input
             type="checkbox"
-            value="${escapeHtml(box)}"
-            ${activeSelection.has(box) ? "checked" : ""}
+            value="${escapeHtml(office)}"
+            ${activeSelection.has(office) ? "checked" : ""}
           />
-          <span class="office-filter-option-title">${escapeHtml(box)}</span>
+          <span class="office-filter-option-title">${escapeHtml(office)}</span>
         </label>
       `
     )
@@ -207,80 +231,74 @@ function closeFilterPopup() {
     return;
   }
 
-  feedbackDiv.querySelector("[data-open-office-filter]")?.focus();
+  feedbackDiv.querySelector("[data-open-item-filter]")?.focus();
 }
 
-function getSelectedBoxesFromPopup() {
+function getSelectedOfficesFromPopup() {
   return [...filterListElement.querySelectorAll('input[type="checkbox"]:checked')]
     .map((input) => input.value)
     .filter(Boolean);
 }
 
-function getVisibleBoxes() {
-  if (!officeSummaryState.selectedBoxes) {
-    return officeSummaryState.uniqueBoxes;
+function getVisibleOffices() {
+  if (!itemSummaryState.selectedOffices) {
+    return itemSummaryState.uniqueOffices;
   }
 
-  const selectedSet = new Set(officeSummaryState.selectedBoxes);
-  return officeSummaryState.uniqueBoxes.filter((box) => selectedSet.has(box));
+  const selectedSet = new Set(itemSummaryState.selectedOffices);
+  return itemSummaryState.uniqueOffices.filter((office) => selectedSet.has(office));
 }
 
 function getVisibleHistory() {
-  if (!officeSummaryState.selectedBoxes) {
-    return officeSummaryState.enrichedHistory;
+  if (!itemSummaryState.selectedOffices) {
+    return itemSummaryState.enrichedHistory;
   }
 
-  const selectedSet = new Set(officeSummaryState.selectedBoxes);
-  return officeSummaryState.enrichedHistory.filter((record) =>
-    selectedSet.has(record.box)
+  const selectedSet = new Set(itemSummaryState.selectedOffices);
+  return itemSummaryState.enrichedHistory.filter((record) =>
+    selectedSet.has(record.office)
   );
 }
 
-function renderOfficeSummary() {
+function renderItemSummary() {
   clearHistoryHighlightState();
 
   const {
-    officeID,
-    currentBoxes,
-    uniqueBoxes,
-    selectedBoxes,
-  } = officeSummaryState;
+    itemID,
+    currentOffice,
+    uniqueOffices,
+    selectedOffices,
+  } = itemSummaryState;
 
-  const visibleBoxes = getVisibleBoxes();
+  const visibleOffices = getVisibleOffices();
   const visibleHistory = getVisibleHistory();
-  const latestVisibleHistoryIdByBox = {};
-  const isFilterActive = Array.isArray(selectedBoxes);
+  const latestVisibleHistoryIdByOffice = {};
+  const isFilterActive = Array.isArray(selectedOffices);
 
   visibleHistory.forEach((record) => {
-    latestVisibleHistoryIdByBox[record.box] = record.chipId;
+    latestVisibleHistoryIdByOffice[record.office] = record.chipId;
   });
 
-  const currentBoxesMarkup = currentBoxes.length
-    ? currentBoxes
-        .map((box) => `<span class="status-chip">${escapeHtml(box)}</span>`)
-        .join("")
-    : `<div class="status-empty">No items currently assigned.</div>`;
-
-  const seenBoxesMarkup = visibleBoxes.length
-    ? visibleBoxes
+  const seenOfficesMarkup = visibleOffices.length
+    ? visibleOffices
         .map(
-          (box) => `
+          (office) => `
             <button
               type="button"
               class="status-chip status-chip-button"
               data-history-target="${escapeHtml(
-                latestVisibleHistoryIdByBox[box] || ""
+                latestVisibleHistoryIdByOffice[office] || ""
               )}"
             >
-              ${escapeHtml(box)}
+              ${escapeHtml(office)}
             </button>
           `
         )
         .join("")
     : `<div class="status-empty">${
         isFilterActive
-          ? "No items match the current filter."
-          : "No items recorded yet."
+          ? "No offices match the current filter."
+          : "No offices recorded yet."
       }</div>`;
 
   const historyItems = visibleHistory
@@ -289,55 +307,49 @@ function renderOfficeSummary() {
         <article class="summary-history-item">
           <div class="summary-history-row summary-history-row-split">
             <div>
-              <span class="summary-history-label">Item</span>
+              <span class="summary-history-label">Office</span>
               <div class="summary-history-pills">
                 <span
                   class="status-chip summary-history-chip"
                   id="${escapeHtml(record.chipId)}"
                 >
-                  ${escapeHtml(record.box)}
+                  ${escapeHtml(record.office)}
                 </span>
               </div>
             </div>
-            <div>
-              <span class="summary-history-label">Times Seen</span>
-              <strong class="summary-history-value">${escapeHtml(
-                record.timesSeen
-              )}</strong>
-            </div>
-          </div>
-          <div class="summary-history-row summary-history-row-split">
-            <div>
-                <span class="summary-history-label">Booked Out At</span>
-              <strong class="summary-history-value">${escapeHtml(record.time)}</strong>
-            </div>
-            <div>
-              <span class="summary-history-label">Retrieved</span>
-              <strong class="summary-history-value">${escapeHtml(
-                record.retrievedTime
-              )}</strong>
-            </div>
-          </div>
-          <div class="summary-history-row summary-history-row-split">
             <div>
               <span class="summary-history-label">Duration In Office</span>
               <strong class="summary-history-value">${escapeHtml(
                 record.duration
               )}</strong>
             </div>
+          </div>
+          <div class="summary-history-row summary-history-row-split">
             <div>
-                <span class="summary-history-label">Booked Out With</span>
-              <div class="summary-history-pills">
-                ${
-                  record.checkedOutWithBoxes.length
-                    ? record.checkedOutWithBoxes
-                        .map(
-                          (box) => `<span class="status-chip">${escapeHtml(box)}</span>`
-                        )
-                        .join("")
-                    : `<span class="summary-history-helper">None</span>`
-                }
-              </div>
+              <span class="summary-history-label">Booked Out At</span>
+              <strong class="summary-history-value">${escapeHtml(record.time)}</strong>
+            </div>
+            <div>
+              <span class="summary-history-label">Booked Out By</span>
+              <strong class="summary-history-value">${escapeHtml(
+                record.checkedOutBy || "Not recorded"
+              )}</strong>
+            </div>
+          </div>
+          <div class="summary-history-row summary-history-row-split">
+            <div>
+              <span class="summary-history-label">Retrieved</span>
+              <strong class="summary-history-value">${escapeHtml(
+                record.retrievedTime
+              )}</strong>
+            </div>
+            <div>
+              <span class="summary-history-label">Booked in By</span>
+              <strong class="summary-history-value">${escapeHtml(
+                record.retrievedTime === "Still in office"
+                  ? "Not yet returned"
+                  : record.retrievedBy || "Not recorded"
+              )}</strong>
             </div>
           </div>
         </article>
@@ -349,7 +361,7 @@ function renderOfficeSummary() {
     ? `<div class="summary-history-list">${historyItems}</div>`
     : `<div class="status-empty">${
         isFilterActive
-          ? "No item logs match the selected filter."
+          ? "No office logs match the selected filter."
           : "No recorded history yet."
       }</div>`;
 
@@ -359,36 +371,36 @@ function renderOfficeSummary() {
       <div class="summary-result-card">
         <div class="summary-result-head">
           <span class="summary-result-eyebrow">Summary</span>
-          <h3>Office ${escapeHtml(officeID)}</h3>
+          <h3>Item ${escapeHtml(itemID)}</h3>
         </div>
         <div class="summary-seen-boxes">
           <div class="summary-section-head">
-            <span class="summary-section-title">Current Items</span>
-            <span class="status-total">
-              <span class="status-total-label">Total:</span>
-              <span class="status-count">${currentBoxes.length}</span>
-            </span>
+            <span class="summary-section-title">Current Office</span>
           </div>
-          <div class="status-chips">${currentBoxesMarkup}</div>
+          <div class="status-chips">
+            <span class="status-chip">${escapeHtml(currentOffice)}</span>
+          </div>
         </div>
         <div class="summary-seen-boxes">
           <div class="summary-section-head">
-            <span class="summary-section-title">Items Seen</span>
+            <span class="summary-section-title">Offices Seen</span>
             <span class="status-total">
               <span class="status-total-label">${isFilterActive ? "Showing:" : "Total:"}</span>
               <span class="status-count">${
-                isFilterActive ? `${visibleBoxes.length} / ${uniqueBoxes.length}` : uniqueBoxes.length
+                isFilterActive
+                  ? `${visibleOffices.length} / ${uniqueOffices.length}`
+                  : uniqueOffices.length
               }</span>
             </span>
           </div>
-          <div class="status-chips">${seenBoxesMarkup}</div>
+          <div class="status-chips">${seenOfficesMarkup}</div>
         </div>
         <div class="summary-filter-bar">
           <button
             type="button"
             class="summary-filter-button"
-            data-open-office-filter
-            ${uniqueBoxes.length ? "" : "disabled"}
+            data-open-item-filter
+            ${uniqueOffices.length ? "" : "disabled"}
           >
             <span>Filter</span>
             <span class="summary-filter-icon" aria-hidden="true">&#9881;&#xFE0E;</span>
@@ -404,10 +416,10 @@ function renderOfficeSummary() {
 bindEnterToButton(searchButton);
 
 searchButton.addEventListener("click", async () => {
-  const officeID = searchInput.value.trim();
+  const boxID = searchInput.value.trim();
 
-  if (!officeID) {
-    setFeedback(feedbackDiv, "Please enter a valid office number.", {
+  if (!boxID) {
+    setFeedback(feedbackDiv, "Please enter a valid item number.", {
       error: true,
     });
     return;
@@ -416,115 +428,85 @@ searchButton.addEventListener("click", async () => {
   try {
     setFilterPopupOpenState(false);
 
-    const snapshot = await get(ref(db, `${officesCollectionPath}/${officeID}`));
+    const snapshot = await get(ref(db, `${boxesCollectionPath}/${boxID}`));
 
     if (!snapshot.exists()) {
-      setFeedback(feedbackDiv, `Office ${officeID} not found in the database.`, {
+      setFeedback(feedbackDiv, `Item ${boxID} not found in the database.`, {
         error: true,
       });
       return;
     }
 
-    const officeData = snapshot.val();
-    const currentBoxes = sortNumericStrings(
-      parseJsonArray(officeData.officecurrent).filter(Boolean)
+    const boxData = snapshot.val();
+    const currentOffice = boxData.boxoffice || "In Safe";
+    const boxHistory = parseJsonArray(boxData.boxhistory).filter(
+      (record) => record && record.office && record.time
     );
-    const officeHistory = parseJsonArray(officeData.officehistory).filter(
-      (record) => record && record.box && record.time
-    );
-    const boxesByCheckoutTime = {};
-    const timesSeenByBox = {};
 
-    officeHistory.forEach((record) => {
-      if (!boxesByCheckoutTime[record.time]) {
-        boxesByCheckoutTime[record.time] = [];
-      }
+    if (!boxHistory.length) {
+      setFeedback(feedbackDiv, `Item ${boxID} has no recorded history.`, {
+        error: true,
+      });
+      return;
+    }
 
-      boxesByCheckoutTime[record.time].push(record.box);
-      timesSeenByBox[record.box] = (timesSeenByBox[record.box] || 0) + 1;
-    });
-
-    const uniqueBoxes = sortNumericStrings([
-      ...new Set(officeHistory.map((record) => record.box)),
+    const uniqueOffices = sortNumericStrings([
+      ...new Set(boxHistory.map((record) => record.office)),
     ]);
 
-    const boxSnapshots = await Promise.all(
-      uniqueBoxes.map((box) => get(ref(db, `${boxesCollectionPath}/${box}`)))
-    );
-    const boxDataById = {};
+    const enrichedHistory = boxHistory.map((record, index) => {
+      const chipId = buildHistoryId("history", boxID, record.time, record.office, index);
 
-    boxSnapshots.forEach((boxSnapshot, index) => {
-      if (!boxSnapshot.exists()) return;
-      boxDataById[uniqueBoxes[index]] = boxSnapshot.val();
-    });
-
-    const enrichedHistory = officeHistory.map((record, index) => {
-      const chipId = buildHistoryId("history", officeID, record.time, record.box, index);
-
-      const boxData = boxDataById[record.box];
-      const boxHistory = parseJsonArray(boxData?.boxhistory).filter(
-        (entry) => entry && entry.office && entry.time
-      );
-      const matchingIndex = boxHistory.findIndex(
-        (entry) =>
-          String(entry.office) === String(officeID) &&
-          String(entry.time) === String(record.time)
-      );
-
+      const nextEntry = boxHistory[index + 1];
       let retrievedTime = "";
+      let checkedOutBy = "";
+      let retrievedBy = "";
       let duration = "";
 
-      if (matchingIndex !== -1) {
-        const nextEntry = boxHistory[matchingIndex + 1];
-
-        if (nextEntry?.time) {
-          retrievedTime = String(nextEntry.time);
-          duration = formatDuration(
-            getClockDifference(String(record.time), String(nextEntry.time))
-          );
-        } else if (
-          boxData?.boxoffice &&
-          String(boxData.boxoffice).toLowerCase() === "in safe" &&
-          boxData.boxtimein
-        ) {
-          retrievedTime = String(boxData.boxtimein);
-          duration = formatDuration(
-            getClockDifference(String(record.time), String(boxData.boxtimein))
-          );
-        } else if (String(boxData?.boxoffice) === String(officeID)) {
-          retrievedTime = "Still in office";
-          duration = "In progress";
-        } else {
-          retrievedTime = "Unavailable";
-          duration = "Unavailable";
-        }
+      if (nextEntry?.time) {
+        retrievedTime = String(nextEntry.time);
+        duration = formatDuration(
+          getClockDifference(String(record.time), String(nextEntry.time))
+        );
+      } else if (
+        String(boxData.boxoffice).toLowerCase() === "in safe" &&
+        boxData.boxtimein
+      ) {
+        retrievedTime = String(boxData.boxtimein);
+        duration = formatDuration(
+          getClockDifference(String(record.time), String(boxData.boxtimein))
+        );
+      } else if (String(boxData.boxoffice) === String(record.office)) {
+        retrievedTime = "Still in office";
+        duration = "In progress";
       } else {
         retrievedTime = "Unavailable";
         duration = "Unavailable";
       }
 
-      const checkedOutWithBoxes = sortNumericStrings(
-        (boxesByCheckoutTime[record.time] || []).filter(
-          (box) => String(box) !== String(record.box)
-        )
+      checkedOutBy = getCheckedOutName(record, boxData, nextEntry);
+      retrievedBy = getRetrievedName(
+        { ...record, retrievedTime },
+        boxData,
+        nextEntry
       );
 
       return {
         ...record,
         chipId,
+        checkedOutBy,
         retrievedTime,
+        retrievedBy,
         duration,
-        checkedOutWithBoxes,
-        timesSeen: timesSeenByBox[record.box] || 0,
       };
     });
 
-    officeSummaryState.officeID = officeID;
-    officeSummaryState.currentBoxes = currentBoxes;
-    officeSummaryState.uniqueBoxes = uniqueBoxes;
-    officeSummaryState.enrichedHistory = enrichedHistory;
-    officeSummaryState.selectedBoxes = null;
-    renderOfficeSummary();
+    itemSummaryState.itemID = boxID;
+    itemSummaryState.currentOffice = currentOffice;
+    itemSummaryState.uniqueOffices = uniqueOffices;
+    itemSummaryState.enrichedHistory = enrichedHistory;
+    itemSummaryState.selectedOffices = null;
+    renderItemSummary();
   } catch (error) {
     setFeedback(feedbackDiv, "Error retrieving data. Please try again.", {
       error: true,
@@ -533,9 +515,9 @@ searchButton.addEventListener("click", async () => {
 });
 
 feedbackDiv.addEventListener("click", (event) => {
-  const filterButton = event.target.closest("[data-open-office-filter]");
+  const filterButton = event.target.closest("[data-open-item-filter]");
   if (filterButton) {
-    if (!officeSummaryState.uniqueBoxes.length) return;
+    if (!itemSummaryState.uniqueOffices.length) return;
     openFilterPopup(filterButton);
     return;
   }
@@ -565,7 +547,6 @@ feedbackDiv.addEventListener("click", (event) => {
     historyEntry.classList.remove("summary-history-item-flash");
     activeHistoryEntry = historyEntry;
   }
-
   target.classList.add("summary-history-chip-selected");
   target.classList.remove("summary-history-chip-active");
   activeHistoryChip = target;
@@ -587,37 +568,37 @@ feedbackDiv.addEventListener("click", (event) => {
 });
 
 filterPopup.addEventListener("click", (event) => {
-  if (event.target.closest("[data-office-filter-close]")) {
+  if (event.target.closest("[data-item-filter-close]")) {
     closeFilterPopup();
   }
 });
 
 filterListElement.addEventListener("change", () => {
-  const selectedBoxes = getSelectedBoxesFromPopup();
-  const totalBoxes = officeSummaryState.uniqueBoxes.length;
+  const selectedOffices = getSelectedOfficesFromPopup();
+  const totalOffices = itemSummaryState.uniqueOffices.length;
 
   filterSummaryElement.textContent =
-    selectedBoxes.length === 0 || selectedBoxes.length === totalBoxes
-      ? `Showing all ${totalBoxes} items.`
-      : `Showing ${selectedBoxes.length} of ${totalBoxes} items.`;
+    selectedOffices.length === 0 || selectedOffices.length === totalOffices
+      ? `Showing all ${totalOffices} offices.`
+      : `Showing ${selectedOffices.length} of ${totalOffices} offices.`;
 });
 
 filterResetButton.addEventListener("click", () => {
-  officeSummaryState.selectedBoxes = null;
-  renderOfficeSummary();
+  itemSummaryState.selectedOffices = null;
+  renderItemSummary();
   closeFilterPopup();
 });
 
 filterApplyButton.addEventListener("click", () => {
-  const selectedBoxes = getSelectedBoxesFromPopup();
+  const selectedOffices = getSelectedOfficesFromPopup();
 
-  officeSummaryState.selectedBoxes =
-    selectedBoxes.length === 0 ||
-    selectedBoxes.length === officeSummaryState.uniqueBoxes.length
+  itemSummaryState.selectedOffices =
+    selectedOffices.length === 0 ||
+    selectedOffices.length === itemSummaryState.uniqueOffices.length
       ? null
-      : sortNumericStrings(selectedBoxes);
+      : sortNumericStrings(selectedOffices);
 
-  renderOfficeSummary();
+  renderItemSummary();
   closeFilterPopup();
 });
 

@@ -39,7 +39,7 @@
     <div id="quicksearchResult"></div>
 
     <nav class="navbar">
-      <a class="navitem" href="addbox.html">Add/Delete Boxes</a>
+      <a class="navitem" href="addbox.html">Add/Delete Items</a>
       <a class="navitem" href="addoffice.html">Add/Delete Offices</a>
       <a class="navitem-active">Reset</a>
       <a class="navitem" href="index.html">Back to work</a>
@@ -56,11 +56,63 @@
       <button id="resetbtn">Reset</button>
     </main>
 
+    <div class="alert-popup reset-confirm-popup" id="resetConfirmPopup">
+      <div class="alert-popup-backdrop" data-reset-close></div>
+      <div
+        class="alert-popup-card reset-confirm-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="resetConfirmTitle"
+        aria-describedby="resetConfirmCopy"
+      >
+        <div class="alert-popup-head reset-confirm-head">
+          <div class="reset-confirm-title-group">
+            <span class="alert-popup-eyebrow reset-confirm-eyebrow">Reset Confirmation</span>
+            <h3 id="resetConfirmTitle">Reset Data</h3>
+            <p class="alert-popup-copy reset-confirm-copy" id="resetConfirmCopy">
+              This will clear every item and office history entry and return all items to
+              <strong>In Safe status</strong>. Items and offices will not be deleted, only
+              their activity data will be reset. This action cannot be undone.
+            </p>
+          </div>
+          <button
+            class="alert-popup-close"
+            type="button"
+            aria-label="Close reset confirmation"
+            data-reset-close
+          >
+            x
+          </button>
+        </div>
+        <div class="reset-confirm-highlights" aria-hidden="true">
+          <div class="reset-confirm-highlight">
+            <span class="reset-confirm-highlight-label">Items</span>
+            <strong>History wiped</strong>
+          </div>
+          <div class="reset-confirm-highlight">
+            <span class="reset-confirm-highlight-label">Offices</span>
+            <strong>History wiped</strong>
+          </div>
+        </div>
+        <p class="reset-confirm-note">
+          Select cancel to leave all records and statuses exactly as they are.
+        </p>
+        <div class="reset-confirm-actions">
+          <button type="button" class="reset-confirm-cancel" data-reset-close>
+            Cancel
+          </button>
+          <button type="button" class="reset-confirm-submit" id="confirmResetBtn">
+            Yes, reset everything
+          </button>
+        </div>
+      </div>
+    </div>
+
     <a class="back-to-top" href="#top" aria-label="Back to top"></a>
 
     <footer class="app-stamp">
-      <p>Cypher v3.2 &bull; Created by Seth Garreth Van Schalkwyk</p>
-      <p>Quietly working behind the scenes ;)</p>
+      <p>Cypher v3.2 &bull; Item Tracking Simplified</p>
+      <p>Created by S.G. Van Schalkwyk</p>
     </footer>
 
     <script src="./reset.mjs" type="module"></script>

@@ -1,11 +1,18 @@
 function parseJsonArray(value) {
   if (!value) return [];
 
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
   try {
-    const parsed = JSON.parse(value);
+    const parsed = JSON.parse(value.trim());
     return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn("Could not parse stored JSON array:", error);
+  } catch {
     return [];
   }
 }
@@ -133,18 +140,18 @@ function getMissingBoxesMessage(missingBoxes, totalRequested) {
   }
 
   if (missingCount === totalRequested && missingCount === 1) {
-    return `Box/Special ${missingBoxes[0]} does not exist in the database.`;
+    return `Item ${missingBoxes[0]} does not exist in the database.`;
   }
 
   if (missingCount === totalRequested) {
-    return "None of the entered boxes were found in the database.";
+    return "None of the entered items were found in the database.";
   }
 
   if (missingCount === 1) {
-    return ` Skipped Box/Special ${missingBoxes[0]} because it does not exist in the database.`;
+    return ` Skipped item ${missingBoxes[0]} because it does not exist in the database.`;
   }
 
-  return ` Skipped boxes that do not exist in the database: ${sortNumericStrings(
+  return ` Skipped items that do not exist in the database: ${sortNumericStrings(
     missingBoxes
   ).join(", ")}.`;
 }

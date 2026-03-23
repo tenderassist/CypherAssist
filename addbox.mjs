@@ -38,9 +38,9 @@ onValue(boxesRef, (snapshot) => {
   const boxNumbers = sortNumericStrings(Object.keys(boxes));
 
   renderStatusCollection(boxListElement, {
-    title: "Active Boxes",
+    title: "Active Items",
     items: boxNumbers,
-    emptyText: "No boxes available.",
+    emptyText: "No items available.",
   });
 });
 
@@ -58,7 +58,7 @@ submitButton.addEventListener("click", async () => {
   }
 
   if (!boxID) {
-    setFeedback(feedbackElement, "Please enter a box or special number.", {
+    setFeedback(feedbackElement, "Please enter an item number.", {
       error: true,
     });
     return;
@@ -73,7 +73,7 @@ submitButton.addEventListener("click", async () => {
       if (snapshot.exists()) {
         setFeedback(
           feedbackElement,
-          `Box/Special ${boxID} already exists in the database.`,
+          `Item ${boxID} already exists in the database.`,
           { error: true }
         );
         return;
@@ -92,14 +92,14 @@ submitButton.addEventListener("click", async () => {
       numberInput.value = "";
       setFeedback(
         feedbackElement,
-        `Successfully ADDED Box/Special ${boxID}!`,
+        `Successfully ADDED Item ${boxID}!`,
         { success: true }
       );
       return;
     }
 
     if (!snapshot.exists()) {
-      setFeedback(feedbackElement, `Box/Special ${boxID} was not found.`, {
+      setFeedback(feedbackElement, `Item ${boxID} was not found.`, {
         error: true,
       });
       return;
@@ -109,7 +109,7 @@ submitButton.addEventListener("click", async () => {
     if (String(boxData?.boxoffice || "In Safe").toLowerCase() !== "in safe") {
       setFeedback(
         feedbackElement,
-        `Box/Special ${boxID} is still checked out to Office ${boxData.boxoffice}. Check it in before deleting it.`,
+        `Item ${boxID} is still booked out to Office ${boxData.boxoffice}. Check it in before deleting it.`,
         { error: true }
       );
       return;
@@ -117,12 +117,11 @@ submitButton.addEventListener("click", async () => {
 
     await remove(boxRef);
     numberInput.value = "";
-    setFeedback(feedbackElement, `Successfully DELETED Box/Special ${boxID}!`, {
+    setFeedback(feedbackElement, `Successfully DELETED Item ${boxID}!`, {
       success: true,
     });
   } catch (error) {
-    console.error("Error updating boxes:", error);
-    setFeedback(feedbackElement, "Could not update boxes. Please try again.", {
+    setFeedback(feedbackElement, "Could not update items. Please try again.", {
       error: true,
     });
   }
