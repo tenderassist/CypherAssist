@@ -110,7 +110,7 @@ if (form) {
       return;
     }
 
-    setFeedback("Signing in...");
+    setFeedback("Signing in...", { success: true });
     setButtonBusy(submitButton, true, "Sign in", "Signing in...");
 
     try {
