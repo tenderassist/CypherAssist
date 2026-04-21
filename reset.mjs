@@ -21,6 +21,7 @@ initQuickSearch(db, user);
 const resetButton = document.getElementById("resetbtn");
 const feedbackElement = document.getElementById("feedback");
 const resetConfirmPopup = document.getElementById("resetConfirmPopup");
+const resetConfirmCard = resetConfirmPopup?.querySelector(".reset-confirm-card");
 const confirmResetButton = document.getElementById("confirmResetBtn");
 
 let lastFocusedElement = null;
@@ -52,7 +53,7 @@ function openResetPopup() {
 
   lastFocusedElement = document.activeElement;
   setResetPopupOpenState(true);
-  confirmResetButton.focus();
+  resetConfirmCard?.focus();
 }
 
 async function performReset() {
@@ -111,7 +112,7 @@ async function performReset() {
     isResetting = false;
     resetButton.disabled = false;
     confirmResetButton.disabled = false;
-    confirmResetButton.textContent = "Yes, reset everything";
+    confirmResetButton.textContent = "Reset";
 
     if (shouldClosePopup) {
       closeResetPopup();

@@ -92,7 +92,7 @@ function setLogoutButtonState(isBusy) {
 
   if (logoutConfirmButton) {
     logoutConfirmButton.disabled = isBusy;
-    logoutConfirmButton.textContent = isBusy ? "Logging out..." : "Yes, log out";
+    logoutConfirmButton.textContent = isBusy ? "Logging out..." : "Log out";
   }
 }
 
@@ -155,7 +155,7 @@ function ensureLogoutDialog() {
           Stay signed in
         </button>
         <button type="button" class="logout-confirm-submit" id="logoutConfirmBtn">
-          Yes, log out
+          Log out
         </button>
       </div>
     </div>
@@ -186,7 +186,6 @@ function ensureLogoutDialog() {
       await signOut(auth);
       redirectTo(LOGIN_PAGE_PATH);
     } catch (error) {
-      console.error("Failed to sign out:", error);
       setLogoutButtonState(false);
     }
   });

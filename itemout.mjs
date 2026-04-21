@@ -33,10 +33,17 @@ const addBoxButton = document.getElementById("addBoxfield");
 const submitButton = document.getElementById("boxoutbtn");
 const feedbackElement = document.getElementById("feedback");
 const scanModeToggleButton = document.getElementById("scanModeToggle");
+const checkoutWarningPopup = document.getElementById("checkoutWarningPopup");
+const checkoutWarningTitle = document.getElementById("checkoutWarningTitle");
+const checkoutWarningCopy = document.getElementById("checkoutWarningCopy");
+const confirmCheckoutWarningButton = document.getElementById(
+  "confirmCheckoutWarningBtn"
+);
 const SCAN_KEY_INTERVAL_MS = 50;
 const SCAN_IDLE_TIMEOUT_MS = 120;
 const MIN_SCAN_LENGTH = 3;
 const MIN_UNFOCUSED_SCAN_LENGTH = 1;
+const OFFICE_WARNING_THRESHOLD = 5;
 
 let scanBuffer = "";
 let lastScanKeyTime = 0;
@@ -48,6 +55,9 @@ let editableScanTarget = null;
 let editableScanStartValue = "";
 let editableScanSelectionStart = null;
 let editableScanSelectionEnd = null;
+let pendingCheckoutRequest = null;
+let lastFocusedElement = null;
+let isSubmittingCheckout = false;
 
 const boxFields = initDynamicBoxFields(boxesContainer, addBoxButton);
 
@@ -63,30 +73,64 @@ scanModeToggleButton?.addEventListener("click", () => {
   renderScanModeToggle();
 });
 
-submitButton.addEventListener("click", async () => {
-  const tempout = tempoutInput.value.trim();
-  const officeNumber = officeOutInput.value.trim();
-  const boxIDs = boxFields.getValues();
+function setCheckoutWarningPopupOpenState(isOpen) {
+  checkoutWarningPopup?.classList.toggle("alert-popup-visible", isOpen);
+  document.body.classList.toggle("popup-open", isOpen);
+}
 
-  if (!officeNumber) {
-    setFeedback(feedbackElement, "Please enter the office number first.", {
-      error: true,
-    });
+function closeCheckoutWarningPopup() {
+  if (isSubmittingCheckout) {
     return;
   }
 
-  if (!boxIDs.length) {
-    setFeedback(feedbackElement, "Please enter at least one item.", {
-      error: true,
-    });
+  pendingCheckoutRequest = null;
+  setCheckoutWarningPopupOpenState(false);
+
+  if (lastFocusedElement instanceof HTMLElement) {
+    lastFocusedElement.focus();
+  }
+}
+
+function openCheckoutWarningPopup({ officeNumber, currentCount, request }) {
+  lastFocusedElement = document.activeElement;
+  pendingCheckoutRequest = request;
+
+  if (checkoutWarningTitle) {
+    checkoutWarningTitle.textContent = `Office ${officeNumber} already has ${currentCount} item${currentCount === 1 ? "" : "s"}`;
+  }
+
+  if (checkoutWarningCopy) {
+    checkoutWarningCopy.textContent = `Office ${officeNumber} already has ${currentCount} item${currentCount === 1 ? "" : "s"} in its possession. Do you want to continue booking more items out?`;
+  }
+
+  setCheckoutWarningPopupOpenState(true);
+}
+
+function getCheckoutRequest() {
+  return {
+    tempout: tempoutInput.value.trim(),
+    officeNumber: officeOutInput.value.trim(),
+    boxIDs: boxFields.getValues(),
+  };
+}
+
+async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }) {
+  if (isSubmittingCheckout) {
     return;
+  }
+
+  isSubmittingCheckout = true;
+  submitButton.disabled = true;
+  if (confirmCheckoutWarningButton) {
+    confirmCheckoutWarningButton.disabled = true;
+    confirmCheckoutWarningButton.textContent = "Booking...";
   }
 
   try {
     const currentTime = getCurrentTimeString();
-    const newOfficeSnapshot = await get(
-      ref(db, `${officesCollectionPath}/${officeNumber}`)
-    );
+    const newOfficeSnapshot =
+      officeSnapshot ||
+      (await get(ref(db, `${officesCollectionPath}/${officeNumber}`)));
 
     if (!newOfficeSnapshot.exists()) {
       setFeedback(
@@ -96,6 +140,13 @@ submitButton.addEventListener("click", async () => {
       );
       return;
     }
+
+    const officeCurrent = parseJsonArray(
+      newOfficeSnapshot.val().officecurrent
+    );
+    const officeHistory = parseJsonArray(
+      newOfficeSnapshot.val().officehistory
+    );
 
     const boxSnapshots = await Promise.all(
       boxIDs.map((boxID) => get(ref(db, `${boxesCollectionPath}/${boxID}`)))
@@ -150,13 +201,6 @@ submitButton.addEventListener("click", async () => {
     ];
     const previousOfficeSnapshots = await Promise.all(officeRefs);
 
-    const officeCurrent = parseJsonArray(
-      newOfficeSnapshot.exists() ? newOfficeSnapshot.val().officecurrent : "[]"
-    );
-    const officeHistory = parseJsonArray(
-      newOfficeSnapshot.exists() ? newOfficeSnapshot.val().officehistory : "[]"
-    );
-
     validBoxes.forEach((boxID) => {
       if (!officeCurrent.includes(boxID)) {
         officeCurrent.push(boxID);
@@ -207,6 +251,105 @@ submitButton.addEventListener("click", async () => {
       "Could not check out items. Please try again.",
       { error: true }
     );
+  } finally {
+    isSubmittingCheckout = false;
+    submitButton.disabled = false;
+    if (confirmCheckoutWarningButton) {
+      confirmCheckoutWarningButton.disabled = false;
+      confirmCheckoutWarningButton.textContent = "Continue";
+    }
+  }
+}
+
+async function startCheckout() {
+  if (isSubmittingCheckout) {
+    return;
+  }
+
+  const request = getCheckoutRequest();
+  const { officeNumber, boxIDs } = request;
+
+  if (!officeNumber) {
+    setFeedback(feedbackElement, "Please enter the office number first.", {
+      error: true,
+    });
+    return;
+  }
+
+  if (!boxIDs.length) {
+    setFeedback(feedbackElement, "Please enter at least one item.", {
+      error: true,
+    });
+    return;
+  }
+
+  try {
+    const officeSnapshot = await get(ref(db, `${officesCollectionPath}/${officeNumber}`));
+
+    if (!officeSnapshot.exists()) {
+      setFeedback(
+        feedbackElement,
+        `Office ${officeNumber} does not exist in the database.`,
+        { error: true }
+      );
+      return;
+    }
+
+    const officeCurrent = parseJsonArray(officeSnapshot.val().officecurrent);
+    if (officeCurrent.length >= OFFICE_WARNING_THRESHOLD) {
+      openCheckoutWarningPopup({
+        officeNumber,
+        currentCount: officeCurrent.length,
+        request,
+      });
+      return;
+    }
+
+    await performCheckout({ ...request, officeSnapshot });
+  } catch (error) {
+    setFeedback(
+      feedbackElement,
+      "Could not check out items. Please try again.",
+      { error: true }
+    );
+  }
+}
+
+submitButton.addEventListener("click", startCheckout);
+
+confirmCheckoutWarningButton?.addEventListener("click", async () => {
+  if (!pendingCheckoutRequest) {
+    closeCheckoutWarningPopup();
+    return;
+  }
+
+  const request = pendingCheckoutRequest;
+  setCheckoutWarningPopupOpenState(false);
+  pendingCheckoutRequest = null;
+  await performCheckout(request);
+});
+
+checkoutWarningPopup?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-checkout-warning-close]")) {
+    closeCheckoutWarningPopup();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Escape" &&
+    checkoutWarningPopup?.classList.contains("alert-popup-visible")
+  ) {
+    closeCheckoutWarningPopup();
+  }
+
+  if (
+    (event.key === "Enter" || event.key === "NumpadEnter") &&
+    checkoutWarningPopup?.classList.contains("alert-popup-visible") &&
+    !event.defaultPrevented
+  ) {
+    event.preventDefault();
+    confirmCheckoutWarningButton?.click();
   }
 });
 
