@@ -31,7 +31,9 @@ const dashboardState = {
 const totalBoxesElement = document.getElementById("totalBoxes");
 const inSafeCountElement = document.getElementById("inSafeCount");
 const checkedOutCountElement = document.getElementById("checkedOutCount");
+const totalOfficesCountElement = document.getElementById("totalOfficesCount");
 const activeOfficesCountElement = document.getElementById("activeOfficesCount");
+const inactiveOfficesCountElement = document.getElementById("inactiveOfficesCount");
 const safePercentageElement = document.getElementById("safePercentage");
 const statusGaugeElement = document.getElementById("statusGauge");
 const legendSafeCountElement = document.getElementById("legendSafeCount");
@@ -165,6 +167,22 @@ function getDurationBetween(startTime, endTime) {
     : startMinutesAgo + (24 * 60 - endMinutesAgo);
 }
 
+function isOfficeActive(officeData) {
+  const currentBoxes = parseJsonArray(officeData?.officecurrent).filter(Boolean);
+  if (currentBoxes.length > 0) {
+    return true;
+  }
+
+  const officeHistory = parseJsonArray(officeData?.officehistory).filter(
+    (record) => record && record.time
+  );
+
+  return officeHistory.some((record) => {
+    const minutesAgo = minutesSinceClockTime(String(record.time));
+    return minutesAgo != null && minutesAgo <= 30;
+  });
+}
+
 function renderInsightList(
   container,
   items,
@@ -290,11 +308,17 @@ function renderDashboard() {
   const safePercentage =
     totalBoxes === 0 ? 0 : Math.round((inSafeCount / totalBoxes) * 100);
   const totalOfficesCount = officeEntries.length;
+  const activeOfficesCount = officeEntries.filter(([, officeData]) =>
+    isOfficeActive(officeData)
+  ).length;
+  const inactiveOfficesCount = Math.max(0, totalOfficesCount - activeOfficesCount);
 
   totalBoxesElement.textContent = totalBoxes;
   inSafeCountElement.textContent = inSafeCount;
   checkedOutCountElement.textContent = checkedOutCount;
-  activeOfficesCountElement.textContent = totalOfficesCount;
+  totalOfficesCountElement.textContent = totalOfficesCount;
+  activeOfficesCountElement.textContent = activeOfficesCount;
+  inactiveOfficesCountElement.textContent = inactiveOfficesCount;
   safePercentageElement.textContent = `${safePercentage}%`;
   legendSafeCountElement.textContent = inSafeCount;
   legendOutCountElement.textContent = checkedOutCount;
