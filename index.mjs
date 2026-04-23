@@ -169,18 +169,7 @@ function getDurationBetween(startTime, endTime) {
 
 function isOfficeActive(officeData) {
   const currentBoxes = parseJsonArray(officeData?.officecurrent).filter(Boolean);
-  if (currentBoxes.length > 0) {
-    return true;
-  }
-
-  const officeHistory = parseJsonArray(officeData?.officehistory).filter(
-    (record) => record && record.time
-  );
-
-  return officeHistory.some((record) => {
-    const minutesAgo = minutesSinceClockTime(String(record.time));
-    return minutesAgo != null && minutesAgo <= 30;
-  });
+  return currentBoxes.length > 0;
 }
 
 function renderInsightList(
