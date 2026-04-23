@@ -9,7 +9,13 @@ import {
   getOfficesCollectionPath,
   requireAuth,
 } from "./auth.mjs";
-import { escapeHtml, minutesSinceClockTime, parseJsonArray } from "./utils.mjs";
+import {
+  escapeHtml,
+  minutesSinceClockTime,
+  parseJsonArray,
+  renderStatusCollection,
+  sortNumericStrings,
+} from "./utils.mjs";
 
 const user = await requireAuth();
 const boxesCollectionPath = getBoxesCollectionPath(user);
@@ -25,6 +31,14 @@ const dashboardState = {
     topOffices: [],
     favouriteBoxes: [],
     naughtyOffices: [],
+  },
+  statusLists: {
+    totalItems: [],
+    bookedOut: [],
+    inSafe: [],
+    totalOffices: [],
+    activeOffices: [],
+    inactiveOffices: [],
   },
 };
 
@@ -44,6 +58,7 @@ const topOfficesListElement = document.getElementById("topOfficesList");
 const favouriteBoxesListElement = document.getElementById("favouriteBoxesList");
 const naughtyOfficesListElement = document.getElementById("naughtyOfficesList");
 const insightCardElements = document.querySelectorAll(".interactive-insight-card[data-insight-key]");
+const statusCardElements = document.querySelectorAll(".interactive-metric-card[data-status-key]");
 
 const INSIGHT_DEFINITIONS = {
   topBoxes: {
@@ -84,6 +99,45 @@ const INSIGHT_DEFINITIONS = {
   },
 };
 
+const STATUS_DEFINITIONS = {
+  totalItems: {
+    title: "All Items",
+    description: "All item numbers currently in the system.",
+    emptyText: "No items found.",
+    collectionTitle: "Box Numbers",
+  },
+  bookedOut: {
+    title: "Booked Out Items",
+    description: "All item numbers that are currently booked out to offices.",
+    emptyText: "No items are currently booked out.",
+    collectionTitle: "Box Numbers",
+  },
+  inSafe: {
+    title: "Items In Safe",
+    description: "All item numbers that are currently in the safe.",
+    emptyText: "No items are currently in the safe.",
+    collectionTitle: "Box Numbers",
+  },
+  totalOffices: {
+    title: "All Offices",
+    description: "All office numbers currently in the system.",
+    emptyText: "No offices found.",
+    collectionTitle: "Office Numbers",
+  },
+  activeOffices: {
+    title: "Active Offices",
+    description: "All office numbers that currently have at least one item assigned.",
+    emptyText: "No active offices found.",
+    collectionTitle: "Office Numbers",
+  },
+  inactiveOffices: {
+    title: "Inactive Offices",
+    description: "All office numbers that currently have no items assigned.",
+    emptyText: "No inactive offices found.",
+    collectionTitle: "Office Numbers",
+  },
+};
+
 const insightPopup = document.createElement("div");
 insightPopup.className = "alert-popup dashboard-popup";
 insightPopup.innerHTML = `
@@ -121,9 +175,14 @@ const insightPopupListElement = document.getElementById("dashboardPopupList");
 
 let activeInsightKey = null;
 let lastInsightTrigger = null;
+let activeStatusKey = null;
+let lastStatusTrigger = null;
 
-function setInsightPopupOpenState(isOpen) {
-  document.body.classList.toggle("popup-open", isOpen);
+function syncPopupOpenState() {
+  document.body.classList.toggle(
+    "popup-open",
+    Boolean(activeInsightKey || activeStatusKey)
+  );
 }
 
 function getOfficeLabel(officeId) {
@@ -241,7 +300,7 @@ function renderInsightPopup() {
 function closeInsightPopup() {
   activeInsightKey = null;
   insightPopup.classList.remove("alert-popup-visible");
-  setInsightPopupOpenState(false);
+  syncPopupOpenState();
 
   if (lastInsightTrigger) {
     lastInsightTrigger.focus();
@@ -255,7 +314,79 @@ function openInsightPopup(insightKey, triggerElement) {
   lastInsightTrigger = triggerElement || null;
   renderInsightPopup();
   insightPopup.classList.add("alert-popup-visible");
-  setInsightPopupOpenState(true);
+  syncPopupOpenState();
+}
+
+const statusPopup = document.createElement("div");
+statusPopup.className = "alert-popup dashboard-popup";
+statusPopup.innerHTML = `
+  <div class="alert-popup-backdrop" data-status-popup-close></div>
+  <div
+    class="alert-popup-card dashboard-popup-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="statusPopupTitle"
+  >
+    <div class="alert-popup-head">
+      <div>
+        <h3 id="statusPopupTitle"></h3>
+      </div>
+      <button
+        class="alert-popup-close"
+        type="button"
+        aria-label="Close status list"
+        data-status-popup-close
+      >
+        x
+      </button>
+    </div>
+    <p class="alert-popup-copy" id="statusPopupCopy"></p>
+    <div class="dashboard-popup-list status-popup-list" id="statusPopupList"></div>
+  </div>
+`;
+
+document.body.appendChild(statusPopup);
+
+const statusPopupTitleElement = document.getElementById("statusPopupTitle");
+const statusPopupCopyElement = document.getElementById("statusPopupCopy");
+const statusPopupListElement = document.getElementById("statusPopupList");
+
+function renderStatusPopup() {
+  if (!activeStatusKey) return;
+
+  const statusDefinition = STATUS_DEFINITIONS[activeStatusKey];
+  if (!statusDefinition) return;
+
+  statusPopupTitleElement.textContent = statusDefinition.title;
+  statusPopupCopyElement.textContent = statusDefinition.description;
+
+  renderStatusCollection(statusPopupListElement, {
+    title: statusDefinition.collectionTitle,
+    items: dashboardState.statusLists[activeStatusKey] || [],
+    emptyText: statusDefinition.emptyText,
+  });
+
+  statusPopupListElement.scrollTop = 0;
+}
+
+function closeStatusPopup() {
+  activeStatusKey = null;
+  statusPopup.classList.remove("alert-popup-visible");
+  syncPopupOpenState();
+
+  if (lastStatusTrigger) {
+    lastStatusTrigger.focus();
+  }
+}
+
+function openStatusPopup(statusKey, triggerElement) {
+  if (!STATUS_DEFINITIONS[statusKey]) return;
+
+  activeStatusKey = statusKey;
+  lastStatusTrigger = triggerElement || null;
+  renderStatusPopup();
+  statusPopup.classList.add("alert-popup-visible");
+  syncPopupOpenState();
 }
 
 insightPopup.addEventListener("click", (event) => {
@@ -264,8 +395,21 @@ insightPopup.addEventListener("click", (event) => {
   }
 });
 
+statusPopup.addEventListener("click", (event) => {
+  if (event.target.closest("[data-status-popup-close]")) {
+    closeStatusPopup();
+  }
+});
+
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && insightPopup.classList.contains("alert-popup-visible")) {
+  if (event.key !== "Escape") return;
+
+  if (statusPopup.classList.contains("alert-popup-visible")) {
+    closeStatusPopup();
+    return;
+  }
+
+  if (insightPopup.classList.contains("alert-popup-visible")) {
     closeInsightPopup();
   }
 });
@@ -283,24 +427,72 @@ insightCardElements.forEach((card) => {
   });
 });
 
+statusCardElements.forEach((card) => {
+  card.addEventListener("click", () => {
+    openStatusPopup(card.dataset.statusKey, card);
+  });
+
+  card.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    openStatusPopup(card.dataset.statusKey, card);
+  });
+});
+
 function renderDashboard() {
   const boxEntries = Object.entries(dashboardState.boxes || {});
   const officeEntries = Object.entries(dashboardState.offices || {}).filter(
     ([officeKey]) => officeKey !== "officecurrent"
   );
 
+  const totalItemNumbers = sortNumericStrings(
+    boxEntries.map(([boxId, boxData]) => String(boxData.boxnum || boxId))
+  );
   const totalBoxes = boxEntries.length;
-  const inSafeCount = boxEntries.filter(([, boxData]) => {
-    return (boxData.boxoffice || "In Safe").toLowerCase() === "in safe";
-  }).length;
-  const checkedOutCount = Math.max(0, totalBoxes - inSafeCount);
+  const inSafeBoxes = sortNumericStrings(
+    boxEntries
+      .filter(([, boxData]) => {
+        return (boxData.boxoffice || "In Safe").toLowerCase() === "in safe";
+      })
+      .map(([boxId, boxData]) => String(boxData.boxnum || boxId))
+  );
+  const bookedOutBoxes = sortNumericStrings(
+    boxEntries
+      .filter(([, boxData]) => {
+        return (boxData.boxoffice || "In Safe").toLowerCase() !== "in safe";
+      })
+      .map(([boxId, boxData]) => String(boxData.boxnum || boxId))
+  );
+  const inSafeCount = inSafeBoxes.length;
+  const checkedOutCount = bookedOutBoxes.length;
   const safePercentage =
     totalBoxes === 0 ? 0 : Math.round((inSafeCount / totalBoxes) * 100);
+  const totalOfficeNumbers = sortNumericStrings(
+    officeEntries.map(([officeId, officeData]) => String(officeData.officenum || officeId))
+  );
   const totalOfficesCount = officeEntries.length;
-  const activeOfficesCount = officeEntries.filter(([, officeData]) =>
-    isOfficeActive(officeData)
-  ).length;
-  const inactiveOfficesCount = Math.max(0, totalOfficesCount - activeOfficesCount);
+  const activeOfficeNumbers = sortNumericStrings(
+    officeEntries
+      .filter(([, officeData]) => isOfficeActive(officeData))
+      .map(([officeId, officeData]) => String(officeData.officenum || officeId))
+  );
+  const inactiveOfficeNumbers = sortNumericStrings(
+    officeEntries
+      .filter(([, officeData]) => !isOfficeActive(officeData))
+      .map(([officeId, officeData]) => String(officeData.officenum || officeId))
+  );
+  const activeOfficesCount = activeOfficeNumbers.length;
+  const inactiveOfficesCount = inactiveOfficeNumbers.length;
+
+  dashboardState.statusLists = {
+    totalItems: totalItemNumbers,
+    bookedOut: bookedOutBoxes,
+    inSafe: inSafeBoxes,
+    totalOffices: totalOfficeNumbers,
+    activeOffices: activeOfficeNumbers,
+    inactiveOffices: inactiveOfficeNumbers,
+  };
 
   totalBoxesElement.textContent = totalBoxes;
   inSafeCountElement.textContent = inSafeCount;
@@ -409,6 +601,10 @@ function renderDashboard() {
 
   if (activeInsightKey) {
     renderInsightPopup();
+  }
+
+  if (activeStatusKey) {
+    renderStatusPopup();
   }
 }
 
