@@ -19,6 +19,10 @@ import {
   getOfficesCollectionPath,
   requireAuth,
 } from "./auth.mjs";
+import {
+  createDayContext,
+  recordWeeklyCheckoutActivity,
+} from "./weeklystats.mjs";
 
 const user = await requireAuth();
 const boxesCollectionPath = getBoxesCollectionPath(user);
@@ -127,7 +131,9 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
   }
 
   try {
-    const currentTime = getCurrentTimeString();
+    const occurredAt = new Date();
+    const currentTime = getCurrentTimeString(occurredAt);
+    const dayContext = createDayContext(occurredAt);
     const newOfficeSnapshot =
       officeSnapshot ||
       (await get(ref(db, `${officesCollectionPath}/${officeNumber}`)));
@@ -153,6 +159,7 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
     );
 
     const validBoxes = [];
+    const validBoxEntries = [];
     const missingBoxes = [];
     const previousOffices = new Set();
     const updates = {};
@@ -166,8 +173,16 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
       }
 
       const boxData = snapshot.val();
+      validBoxEntries.push({ boxId: boxID, boxData });
       const history = parseJsonArray(boxData.boxhistory);
-      history.push({ office: officeNumber, time: currentTime, name: tempout });
+      history.push({
+        office: officeNumber,
+        time: currentTime,
+        name: tempout,
+        date: dayContext.dateKey,
+        dayLabel: dayContext.dayLabel,
+        timestamp: dayContext.isoStamp,
+      });
 
       validBoxes.push(boxID);
 
@@ -183,6 +198,9 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
       updates[`${boxesCollectionPath}/${boxID}/boxoffice`] = officeNumber;
       updates[`${boxesCollectionPath}/${boxID}/boxtempout`] = tempout;
       updates[`${boxesCollectionPath}/${boxID}/boxtimeout`] = currentTime;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeoutAt`] = dayContext.isoStamp;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeoutDate`] = dayContext.dateKey;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeoutDayLabel`] = dayContext.dayLabel;
     });
 
     if (!validBoxes.length) {
@@ -206,7 +224,13 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
         officeCurrent.push(boxID);
       }
 
-      officeHistory.push({ box: boxID, time: currentTime });
+      officeHistory.push({
+        box: boxID,
+        time: currentTime,
+        date: dayContext.dateKey,
+        dayLabel: dayContext.dayLabel,
+        timestamp: dayContext.isoStamp,
+      });
     });
 
     updates[`${officesCollectionPath}/${officeNumber}/officecurrent`] = JSON.stringify(
@@ -233,6 +257,19 @@ async function performCheckout({ tempout, officeNumber, boxIDs, officeSnapshot }
     });
 
     await update(ref(db), updates);
+
+    try {
+      await recordWeeklyCheckoutActivity({
+        user,
+        boxIds: validBoxes,
+        boxEntries: validBoxEntries,
+        officeNumber,
+        checkedOutBy: tempout,
+        occurredAt,
+      });
+    } catch (weeklyStatsError) {
+      console.error("Weekly checkout tracking failed.", weeklyStatsError);
+    }
 
     const checkedOutBoxes = sortNumericStrings(validBoxes).join(", ");
     const missingMessage = getMissingBoxesMessage(missingBoxes, boxIDs.length);
