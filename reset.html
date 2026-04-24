@@ -46,14 +46,15 @@
     </nav>
 
     <main class="page-panel">
-      <h2>Reset</h2>
+      <h2>Reset Weekly Data</h2>
       <p class="page-intro">
-        Clear operational state and return the system to a fresh starting point.
+        Daily operational data now resets automatically at midnight. Use this
+        page to clear weekly tracking data only.
       </p>
 
       <a id="feedback"></a>
 
-      <button id="resetbtn">Reset</button>
+      <button id="resetbtn">Reset Weekly Data</button>
     </main>
 
     <div class="alert-popup reset-confirm-popup" id="resetConfirmPopup">
@@ -70,11 +71,12 @@
         <div class="alert-popup-head reset-confirm-head">
           <div class="reset-confirm-title-group">
             <span class="alert-popup-eyebrow reset-confirm-eyebrow">Reset Confirmation</span>
-            <h3 id="resetConfirmTitle">Reset Data</h3>
+            <h3 id="resetConfirmTitle">Reset Weekly Data</h3>
             <p class="alert-popup-copy reset-confirm-copy" id="resetConfirmCopy">
-              This will clear every item and office history entry and return all items to
-              <strong>In Safe status</strong>. Items and offices will not be deleted, only
-              their activity data will be reset. This action cannot be undone.
+              This will clear the weekly summary data and restart weekly item
+              tracking. Daily operational resets continue automatically and
+              item and office records will not be deleted. This action cannot
+              be undone.
             </p>
           </div>
           <button
@@ -88,23 +90,23 @@
         </div>
         <div class="reset-confirm-highlights" aria-hidden="true">
           <div class="reset-confirm-highlight">
-            <span class="reset-confirm-highlight-label">Items</span>
+            <span class="reset-confirm-highlight-label">Weekly Summary</span>
             <strong>History wiped</strong>
           </div>
           <div class="reset-confirm-highlight">
-            <span class="reset-confirm-highlight-label">Offices</span>
-            <strong>History wiped</strong>
+            <span class="reset-confirm-highlight-label">Live Tracking</span>
+            <strong>Restarted</strong>
           </div>
         </div>
         <p class="reset-confirm-note">
-          Select cancel to leave all records and statuses exactly as they are.
+          Select cancel to leave the current weekly stats exactly as they are.
         </p>
         <div class="reset-confirm-actions">
           <button type="button" class="reset-confirm-cancel" data-reset-close>
             Cancel
           </button>
           <button type="button" class="reset-confirm-submit" id="confirmResetBtn">
-            Reset
+            Reset Weekly Data
           </button>
         </div>
       </div>

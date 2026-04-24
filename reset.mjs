@@ -1,20 +1,19 @@
 import {
   ref,
   update,
-  get,
 } from "firebase/database";
 import { db } from "./firebase.mjs";
 import { initQuickSearch } from "./quicksearch.mjs";
 import { bindEnterToButton, setFeedback } from "./utils.mjs";
 import {
-  getBoxesCollectionPath,
-  getOfficesCollectionPath,
+  getActiveWeeklyMovementsPath,
+  getWeeklyStatsCollectionPath,
   requireAuth,
 } from "./auth.mjs";
 
 const user = await requireAuth();
-const boxesCollectionPath = getBoxesCollectionPath(user);
-const officesCollectionPath = getOfficesCollectionPath(user);
+const weeklyStatsCollectionPath = getWeeklyStatsCollectionPath(user);
+const activeWeeklyMovementsPath = getActiveWeeklyMovementsPath(user);
 
 initQuickSearch(db, user);
 
@@ -69,50 +68,24 @@ async function performReset() {
   confirmResetButton.textContent = "Resetting...";
 
   try {
-    const [boxesSnapshot, officesSnapshot] = await Promise.all([
-      get(ref(db, boxesCollectionPath)),
-      get(ref(db, officesCollectionPath)),
-    ]);
-
     const updates = {};
-
-    if (boxesSnapshot.exists()) {
-      const boxes = boxesSnapshot.val();
-
-      Object.keys(boxes).forEach((boxID) => {
-        updates[`${boxesCollectionPath}/${boxID}/boxhistory`] = "[]";
-        updates[`${boxesCollectionPath}/${boxID}/boxoffice`] = "In Safe";
-        updates[`${boxesCollectionPath}/${boxID}/boxtimeout`] = "";
-        updates[`${boxesCollectionPath}/${boxID}/boxtimein`] = "";
-        updates[`${boxesCollectionPath}/${boxID}/boxtempout`] = "";
-        updates[`${boxesCollectionPath}/${boxID}/boxtempin`] = "";
-      });
-    }
-
-    if (officesSnapshot.exists()) {
-      const offices = officesSnapshot.val();
-
-      Object.keys(offices).forEach((officeID) => {
-        if (officeID === "officecurrent") return;
-        updates[`${officesCollectionPath}/${officeID}/officehistory`] = "[]";
-        updates[`${officesCollectionPath}/${officeID}/officecurrent`] = "[]";
-      });
-    }
+    updates[weeklyStatsCollectionPath] = null;
+    updates[activeWeeklyMovementsPath] = null;
 
     await update(ref(db), updates);
-    setFeedback(feedbackElement, "All data has been reset successfully!", {
+    setFeedback(feedbackElement, "Weekly data has been reset successfully!", {
       success: true,
     });
     shouldClosePopup = true;
   } catch (error) {
-    setFeedback(feedbackElement, "Error resetting data. Please try again.", {
+    setFeedback(feedbackElement, "Error resetting weekly data. Please try again.", {
       error: true,
     });
   } finally {
     isResetting = false;
     resetButton.disabled = false;
     confirmResetButton.disabled = false;
-    confirmResetButton.textContent = "Reset";
+    confirmResetButton.textContent = "Reset Weekly Data";
 
     if (shouldClosePopup) {
       closeResetPopup();

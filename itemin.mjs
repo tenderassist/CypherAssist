@@ -19,6 +19,10 @@ import {
   getOfficesCollectionPath,
   requireAuth,
 } from "./auth.mjs";
+import {
+  createDayContext,
+  recordWeeklyCheckInActivity,
+} from "./weeklystats.mjs";
 
 const user = await requireAuth();
 const boxesCollectionPath = getBoxesCollectionPath(user);
@@ -76,10 +80,13 @@ async function checkInBoxes(boxIDs, tempin = tempinInput.value.trim()) {
     );
 
     const validBoxes = [];
+    const validBoxEntries = [];
     const missingBoxes = [];
     const previousOffices = new Set();
     const updates = {};
-    const currentTime = getCurrentTimeString();
+    const occurredAt = new Date();
+    const currentTime = getCurrentTimeString(occurredAt);
+    const dayContext = createDayContext(occurredAt);
 
     boxSnapshots.forEach((snapshot, index) => {
       const boxID = boxIDs[index];
@@ -91,6 +98,7 @@ async function checkInBoxes(boxIDs, tempin = tempinInput.value.trim()) {
 
       const boxData = snapshot.val();
       validBoxes.push(boxID);
+      validBoxEntries.push({ boxId: boxID, boxData });
 
       if (
         boxData.boxoffice &&
@@ -101,6 +109,9 @@ async function checkInBoxes(boxIDs, tempin = tempinInput.value.trim()) {
 
       updates[`${boxesCollectionPath}/${boxID}/boxtempin`] = tempin;
       updates[`${boxesCollectionPath}/${boxID}/boxtimein`] = currentTime;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeinAt`] = dayContext.isoStamp;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeinDate`] = dayContext.dateKey;
+      updates[`${boxesCollectionPath}/${boxID}/boxtimeinDayLabel`] = dayContext.dayLabel;
       updates[`${boxesCollectionPath}/${boxID}/boxoffice`] = "In Safe";
     });
 
@@ -135,6 +146,17 @@ async function checkInBoxes(boxIDs, tempin = tempinInput.value.trim()) {
     });
 
     await update(ref(db), updates);
+
+    try {
+      await recordWeeklyCheckInActivity({
+        user,
+        boxEntries: validBoxEntries,
+        returnedBy: tempin,
+        occurredAt,
+      });
+    } catch (weeklyStatsError) {
+      console.error("Weekly check-in tracking failed.", weeklyStatsError);
+    }
 
     const checkedInBoxes = sortNumericStrings(validBoxes).join(", ");
     const missingMessage = getMissingBoxesMessage(missingBoxes, boxIDs.length);

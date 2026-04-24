@@ -7,6 +7,7 @@ import { initQuickSearch } from "./quicksearch.mjs";
 import {
   getBoxesCollectionPath,
   getOfficesCollectionPath,
+  getWeeklyStatsCollectionPath,
   requireAuth,
 } from "./auth.mjs";
 import {
@@ -16,10 +17,21 @@ import {
   renderStatusCollection,
   sortNumericStrings,
 } from "./utils.mjs";
+import {
+  buildWeekView,
+  buildWeeklyBoxSummaries,
+  createWeekContext,
+  downloadWeeklyStatsWorkbook,
+} from "./weeklystats.mjs";
 
 const user = await requireAuth();
 const boxesCollectionPath = getBoxesCollectionPath(user);
 const officesCollectionPath = getOfficesCollectionPath(user);
+const weeklyStatsCollectionPath = getWeeklyStatsCollectionPath(user);
+let activeWeekContext = createWeekContext();
+let activeWeekReferenceDate = getWeekReferenceDate(activeWeekContext);
+let weeklyStatsUnsubscribe = null;
+let weeklyWeekRefreshTimerId = null;
 
 initQuickSearch(db, user);
 
@@ -40,7 +52,24 @@ const dashboardState = {
     activeOffices: [],
     inactiveOffices: [],
   },
+  weekly: hydrateWeeklyState(null),
 };
+
+function getWeekReferenceDate(weekContext) {
+  const [weekYear, weekMonth, weekDay] = String(
+    weekContext?.weekStartDateKey || ""
+  )
+    .split("-")
+    .map(Number);
+
+  return new Date(weekYear, weekMonth - 1, weekDay);
+}
+
+function getMillisecondsUntilNextMidnight(referenceDate = new Date()) {
+  const nextMidnight = new Date(referenceDate);
+  nextMidnight.setHours(24, 0, 0, 0);
+  return Math.max(1000, nextMidnight.getTime() - referenceDate.getTime() + 1000);
+}
 
 const totalBoxesElement = document.getElementById("totalBoxes");
 const inSafeCountElement = document.getElementById("inSafeCount");
@@ -57,6 +86,10 @@ const topBoxesListElement = document.getElementById("topBoxesList");
 const topOfficesListElement = document.getElementById("topOfficesList");
 const favouriteBoxesListElement = document.getElementById("favouriteBoxesList");
 const naughtyOfficesListElement = document.getElementById("naughtyOfficesList");
+const weeklySummaryTitleElement = document.getElementById("weeklySummaryTitle");
+const weeklySummaryMetaElement = document.getElementById("weeklySummaryMeta");
+const weeklyStatsGraphElement = document.getElementById("weeklyStatsGraph");
+const weeklyExportButton = document.getElementById("weeklyExportButton");
 const insightCardElements = document.querySelectorAll(".interactive-insight-card[data-insight-key]");
 const statusCardElements = document.querySelectorAll(".interactive-metric-card[data-status-key]");
 
@@ -177,12 +210,76 @@ let activeInsightKey = null;
 let lastInsightTrigger = null;
 let activeStatusKey = null;
 let lastStatusTrigger = null;
+let activeWeeklyDayKey = null;
+let activeWeeklyLeaderboardType = "";
+let activeWeeklyItemFilter = "";
+let lastWeeklyTrigger = null;
+let lastWeeklyLeaderboardTrigger = null;
+let activeWeeklyHistoryEntry = null;
+let activeWeeklyHistoryChip = null;
+let weeklyHistoryHighlightTimeoutId = null;
 
 function syncPopupOpenState() {
   document.body.classList.toggle(
     "popup-open",
-    Boolean(activeInsightKey || activeStatusKey)
+    Boolean(
+      activeInsightKey ||
+        activeStatusKey ||
+        activeWeeklyDayKey ||
+        activeWeeklyLeaderboardType
+    )
   );
+}
+
+function hydrateWeeklyState(weekData) {
+  const weekView = buildWeekView(weekData, activeWeekReferenceDate);
+
+  return {
+    ...weekView,
+    boxSummaries: buildWeeklyBoxSummaries(weekView),
+  };
+}
+
+function bindWeeklyStatsListener() {
+  if (typeof weeklyStatsUnsubscribe === "function") {
+    weeklyStatsUnsubscribe();
+  }
+
+  weeklyStatsUnsubscribe = onValue(
+    ref(db, `${weeklyStatsCollectionPath}/${activeWeekContext.weekKey}`),
+    (snapshot) => {
+      dashboardState.weekly = hydrateWeeklyState(
+        snapshot.exists() ? snapshot.val() : null
+      );
+      renderDashboard();
+    }
+  );
+}
+
+function scheduleWeeklyWeekRefresh() {
+  if (weeklyWeekRefreshTimerId) {
+    window.clearTimeout(weeklyWeekRefreshTimerId);
+  }
+
+  weeklyWeekRefreshTimerId = window.setTimeout(() => {
+    const nextWeekContext = createWeekContext();
+
+    if (nextWeekContext.weekKey !== activeWeekContext.weekKey) {
+      activeWeekContext = nextWeekContext;
+      activeWeekReferenceDate = getWeekReferenceDate(nextWeekContext);
+      dashboardState.weekly = hydrateWeeklyState(null);
+      if (
+        activeWeeklyDayKey &&
+        !dashboardState.weekly.days.some((day) => day.dateKey === activeWeeklyDayKey)
+      ) {
+        closeWeeklyPopup();
+      }
+      bindWeeklyStatsListener();
+    }
+
+    renderDashboard();
+    scheduleWeeklyWeekRefresh();
+  }, getMillisecondsUntilNextMidnight());
 }
 
 function getOfficeLabel(officeId) {
@@ -351,6 +448,88 @@ const statusPopupTitleElement = document.getElementById("statusPopupTitle");
 const statusPopupCopyElement = document.getElementById("statusPopupCopy");
 const statusPopupListElement = document.getElementById("statusPopupList");
 
+const weeklyPopup = document.createElement("div");
+weeklyPopup.className = "alert-popup dashboard-popup weekly-popup";
+weeklyPopup.innerHTML = `
+  <div class="alert-popup-backdrop" data-weekly-popup-close></div>
+  <div
+    class="alert-popup-card dashboard-popup-card weekly-popup-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="weeklyPopupTitle"
+  >
+    <div class="alert-popup-head">
+      <div>
+        <span class="alert-popup-eyebrow">Weekly Summary</span>
+        <h3 id="weeklyPopupTitle"></h3>
+      </div>
+      <button
+        class="alert-popup-close"
+        type="button"
+        aria-label="Close weekly summary"
+        data-weekly-popup-close
+      >
+        x
+      </button>
+    </div>
+    <p class="alert-popup-copy" id="weeklyPopupCopy"></p>
+    <div class="weekly-popup-meta" id="weeklyPopupMeta"></div>
+    <div class="weekly-popup-body" id="weeklyPopupBody"></div>
+  </div>
+`;
+
+document.body.appendChild(weeklyPopup);
+
+const weeklyPopupTitleElement = document.getElementById("weeklyPopupTitle");
+const weeklyPopupCopyElement = document.getElementById("weeklyPopupCopy");
+const weeklyPopupMetaElement = document.getElementById("weeklyPopupMeta");
+const weeklyPopupBodyElement = document.getElementById("weeklyPopupBody");
+
+const weeklyLeaderboardPopup = document.createElement("div");
+weeklyLeaderboardPopup.className = "alert-popup dashboard-popup weekly-popup";
+weeklyLeaderboardPopup.innerHTML = `
+  <div class="alert-popup-backdrop" data-weekly-leaderboard-close></div>
+  <div
+    class="alert-popup-card dashboard-popup-card weekly-popup-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="weeklyLeaderboardTitle"
+  >
+    <div class="alert-popup-head">
+      <div>
+        <span class="alert-popup-eyebrow">Weekly Summary</span>
+        <h3 id="weeklyLeaderboardTitle"></h3>
+      </div>
+      <button
+        class="alert-popup-close"
+        type="button"
+        aria-label="Close weekly item leaderboard"
+        data-weekly-leaderboard-close
+      >
+        x
+      </button>
+    </div>
+    <p class="alert-popup-copy" id="weeklyLeaderboardCopy"></p>
+    <div class="weekly-popup-meta" id="weeklyLeaderboardMeta"></div>
+    <div class="weekly-popup-body" id="weeklyLeaderboardBody"></div>
+  </div>
+`;
+
+document.body.appendChild(weeklyLeaderboardPopup);
+
+const weeklyLeaderboardTitleElement = document.getElementById(
+  "weeklyLeaderboardTitle"
+);
+const weeklyLeaderboardCopyElement = document.getElementById(
+  "weeklyLeaderboardCopy"
+);
+const weeklyLeaderboardMetaElement = document.getElementById(
+  "weeklyLeaderboardMeta"
+);
+const weeklyLeaderboardBodyElement = document.getElementById(
+  "weeklyLeaderboardBody"
+);
+
 function renderStatusPopup() {
   if (!activeStatusKey) return;
 
@@ -389,6 +568,508 @@ function openStatusPopup(statusKey, triggerElement) {
   syncPopupOpenState();
 }
 
+function getWeeklyDay(dayKey) {
+  return dashboardState.weekly.days.find((day) => day.dateKey === dayKey) || null;
+}
+
+function getWeeklyBoxSummariesForDay(dayKey) {
+  return dashboardState.weekly.boxSummaries.filter((summary) =>
+    summary.activeDateKeys.includes(dayKey)
+  );
+}
+
+function getFilteredWeeklyBoxSummariesForDay(dayKey) {
+  const itemFilter = String(activeWeeklyItemFilter || "").trim();
+  const matchingSummaries = getWeeklyBoxSummariesForDay(dayKey);
+
+  if (!itemFilter) {
+    return matchingSummaries;
+  }
+
+  return matchingSummaries.filter(
+    (summary) => String(summary.boxId || "").trim() === itemFilter
+  );
+}
+
+function getTopWeeklyBookedOutItems(limit = 20) {
+  return [...(dashboardState.weekly?.boxSummaries || [])]
+    .sort((left, right) => {
+      if (right.totalTimesBookedOut !== left.totalTimesBookedOut) {
+        return right.totalTimesBookedOut - left.totalTimesBookedOut;
+      }
+
+      if (right.totalTimeSeenMinutes !== left.totalTimeSeenMinutes) {
+        return right.totalTimeSeenMinutes - left.totalTimeSeenMinutes;
+      }
+
+      return String(left.boxId).localeCompare(String(right.boxId), undefined, {
+        numeric: true,
+      });
+    })
+    .slice(0, limit);
+}
+
+function getTopWeeklyPopularItems(limit = 20) {
+  return [...(dashboardState.weekly?.boxSummaries || [])]
+    .sort((left, right) => {
+      if (right.totalTimeSeenMinutes !== left.totalTimeSeenMinutes) {
+        return right.totalTimeSeenMinutes - left.totalTimeSeenMinutes;
+      }
+
+      if (right.totalTimesBookedOut !== left.totalTimesBookedOut) {
+        return right.totalTimesBookedOut - left.totalTimesBookedOut;
+      }
+
+      return String(left.boxId).localeCompare(String(right.boxId), undefined, {
+        numeric: true,
+      });
+    })
+    .slice(0, limit);
+}
+
+function clearWeeklyHistoryHighlightState() {
+  if (weeklyHistoryHighlightTimeoutId) {
+    window.clearTimeout(weeklyHistoryHighlightTimeoutId);
+    weeklyHistoryHighlightTimeoutId = null;
+  }
+
+  activeWeeklyHistoryEntry?.classList.add("summary-history-item-hidden");
+  activeWeeklyHistoryEntry?.classList.remove("summary-history-item-active");
+  activeWeeklyHistoryEntry?.classList.remove("summary-history-item-flash");
+  activeWeeklyHistoryChip?.classList.remove("summary-history-chip-selected");
+  activeWeeklyHistoryChip?.classList.remove("summary-history-chip-active");
+
+  activeWeeklyHistoryEntry = null;
+  activeWeeklyHistoryChip = null;
+}
+
+function renderWeeklySummary() {
+  if (!weeklySummaryMetaElement || !weeklyStatsGraphElement) return;
+
+  const weeklySummary = dashboardState.weekly;
+
+  if (weeklySummaryTitleElement) {
+    weeklySummaryTitleElement.textContent = `Weekly Summary: ${weeklySummary.weekLabel}`;
+  }
+
+  const peakActiveOffices = weeklySummary.days.reduce((highestCount, day) => {
+    const activeOfficeCount = new Set(
+      day.journeys
+        .map((journey) => String(journey.office || "").trim())
+        .filter(Boolean)
+    ).size;
+
+    return Math.max(highestCount, activeOfficeCount);
+  }, 0);
+  const mostPopularItem = [...weeklySummary.boxSummaries]
+    .sort((left, right) => {
+      if (right.totalTimeSeenMinutes !== left.totalTimeSeenMinutes) {
+        return right.totalTimeSeenMinutes - left.totalTimeSeenMinutes;
+      }
+
+      return String(left.boxId).localeCompare(String(right.boxId), undefined, {
+        numeric: true,
+      });
+    })[0];
+  const mostBookedOutItem = [...weeklySummary.boxSummaries]
+    .sort((left, right) => {
+      if (right.totalTimesBookedOut !== left.totalTimesBookedOut) {
+        return right.totalTimesBookedOut - left.totalTimesBookedOut;
+      }
+
+      return String(left.boxId).localeCompare(String(right.boxId), undefined, {
+        numeric: true,
+      });
+    })[0];
+  const today = new Date();
+  const todayDateKey = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const maxBookedOutItemCount = Math.max(
+    ...weeklySummary.days.map((day) => day.bookedOutBoxCount),
+    1
+  );
+
+  weeklySummaryMetaElement.innerHTML = `
+    <span class="status-chip">Peak Active Offices: ${peakActiveOffices}</span>
+    <button
+      type="button"
+      class="status-chip status-chip-button"
+      data-weekly-summary-action="most-popular"
+    >Most popular item: ${escapeHtml(
+      mostPopularItem
+        ? `Item ${mostPopularItem.boxId} (${mostPopularItem.totalTimeSeenLabel})`
+        : "None yet"
+    )}</button>
+    <button
+      type="button"
+      class="status-chip status-chip-button"
+      data-weekly-summary-action="most-booked-out"
+    >Most booked out item: ${escapeHtml(
+      mostBookedOutItem
+        ? `Item ${mostBookedOutItem.boxId} (${mostBookedOutItem.totalTimesBookedOut})`
+        : "None yet"
+    )}</button>
+  `;
+
+  weeklyStatsGraphElement.innerHTML = `
+    <div class="weekly-bar-chart-shell">
+      <div class="weekly-bar-chart-head">
+        <div>
+          <strong class="weekly-bar-chart-title">Weekly activity at a glance</strong>
+        </div>
+        <span class="weekly-bar-chart-note">Click a bar to open the item summaries for that day.</span>
+      </div>
+      <div class="weekly-bar-chart">
+        ${weeklySummary.days
+          .map((day) => {
+            const height =
+              day.bookedOutBoxCount > 0
+                ? Math.max(10, (day.bookedOutBoxCount / maxBookedOutItemCount) * 100)
+                : 0;
+            const isPeakDay =
+              day.bookedOutBoxCount > 0 && day.bookedOutBoxCount === maxBookedOutItemCount;
+            const isToday = day.dateKey === todayDateKey;
+
+            return `
+              <button
+                type="button"
+                class="weekly-bar-button${
+                  day.bookedOutBoxCount ? "" : " weekly-bar-button-idle"
+                }${isPeakDay ? " weekly-bar-button-peak" : ""}${
+                  isToday ? " weekly-bar-button-today" : ""
+                }"
+                data-weekly-day-key="${escapeHtml(day.dateKey)}"
+                aria-label="${escapeHtml(
+                  `${day.dayLabel}: ${day.bookedOutBoxCount} ${
+                    day.bookedOutBoxCount === 1 ? "item" : "items"
+                  } booked out`
+                )}"
+              >
+                ${
+                  isToday
+                    ? '<span class="weekly-bar-chip">Today</span>'
+                    : '<span class="weekly-bar-chip weekly-bar-chip-hidden" aria-hidden="true"></span>'
+                }
+                <span class="weekly-bar-track" aria-hidden="true">
+                  <span class="weekly-bar-grid"></span>
+                  <span class="weekly-bar-fill" style="height: ${height}%"></span>
+                </span>
+                <span class="weekly-bar-day">${escapeHtml(day.dayName)}</span>
+                <span class="weekly-bar-date">${escapeHtml(day.displayDate)}</span>
+                <span class="weekly-bar-meta">${day.checkoutCount} ${
+                  day.checkoutCount === 1 ? "booking" : "bookings"
+                }</span>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderWeeklyHistoryEntry(entry) {
+  const isCurrentlyInOffice = entry.returnedLabel === "Still in office";
+  const durationLabel = isCurrentlyInOffice
+    ? String(entry.durationLabel || "").replace(/\s+so far$/i, "")
+    : entry.durationLabel;
+
+  return `
+    <article class="summary-history-item summary-history-item-hidden" id="${escapeHtml(
+      entry.detailId
+    )}">
+      <div class="summary-history-row summary-history-row-split">
+        <div>
+          <span class="summary-history-label">Office</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.officeLabel
+          )}</strong>
+        </div>
+        <div>
+          <span class="summary-history-label">Duration In Office</span>
+          <strong class="summary-history-value">${escapeHtml(
+            `${durationLabel}${isCurrentlyInOffice ? " (Currently in office)" : ""}`
+          )}</strong>
+        </div>
+      </div>
+      <div class="summary-history-row summary-history-row-split">
+        <div>
+          <span class="summary-history-label">Day</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.dayLabel
+          )}</strong>
+        </div>
+        <div>
+          <span class="summary-history-label">Times Seen</span>
+          <strong class="summary-history-value">${escapeHtml(
+            String(entry.officeSeenCount || 0)
+          )}</strong>
+        </div>
+      </div>
+      <div class="summary-history-row summary-history-row-split">
+        <div>
+          <span class="summary-history-label">Booked Out At</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.checkedOutLabel
+          )}</strong>
+        </div>
+        <div>
+          <span class="summary-history-label">Booked Out By</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.checkedOutBy || "Not recorded"
+          )}</strong>
+        </div>
+      </div>
+      <div class="summary-history-row summary-history-row-split">
+        <div>
+          <span class="summary-history-label">Retrieved</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.returnedLabel
+          )}</strong>
+        </div>
+        <div>
+          <span class="summary-history-label">Booked In By</span>
+          <strong class="summary-history-value">${escapeHtml(
+            entry.returnedLabel === "Still in office"
+              ? "Not yet returned"
+              : entry.returnedBy || "Not recorded"
+          )}</strong>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderWeeklyItemSummaryCard(summary, selectedDay) {
+  const selectedDayEntries = summary.historyEntries.filter(
+    (entry) => entry.dateKey === selectedDay.dateKey
+  );
+  const dayOfficeSeenCounts = selectedDayEntries.reduce((counts, entry) => {
+    const officeKey = String(entry.office || "").trim();
+    if (!officeKey) {
+      return counts;
+    }
+
+    counts[officeKey] = (counts[officeKey] || 0) + 1;
+    return counts;
+  }, {});
+  const selectedDayDurationMinutes = selectedDayEntries.reduce(
+    (total, entry) =>
+      total +
+      (Number.isFinite(Number(entry.durationMinutes)) &&
+      Number(entry.durationMinutes) >= 0
+        ? Number(entry.durationMinutes)
+        : 0),
+    0
+  );
+  const officesMarkup = selectedDayEntries.length
+    ? selectedDayEntries
+        .map(
+          (entry) => {
+            const isCurrentlyInOffice = entry.returnedLabel === "Still in office";
+            const officeDurationLabel = isCurrentlyInOffice
+              ? `${String(entry.durationLabel || "").replace(/\s+so far$/i, "")} (Currently in office)`
+              : entry.durationLabel;
+
+            return `
+            <button
+              type="button"
+              class="weekly-office-pill"
+              data-weekly-history-target="${escapeHtml(entry.detailId)}"
+              title="${escapeHtml(
+                `${entry.officeLabel} booked out at ${entry.checkedOutLabel}`
+              )}"
+            >
+              <span class="weekly-office-pill-name">${escapeHtml(
+                entry.officeLabel
+              )}</span>
+              <span class="weekly-office-pill-time">${escapeHtml(
+                officeDurationLabel
+              )}</span>
+            </button>
+          `;
+          }
+        )
+        .join("")
+    : `<span class="weekly-box-day-empty">No office visits</span>`;
+  const historyMarkup = selectedDayEntries.length
+    ? `
+        <div class="summary-history-list">
+          ${selectedDayEntries
+            .map((entry) =>
+              renderWeeklyHistoryEntry({
+                ...entry,
+                officeSeenCount: dayOfficeSeenCounts[String(entry.office || "").trim()] || 0,
+              })
+            )
+            .join("")}
+        </div>
+      `
+    : "";
+
+  return `
+    <article class="summary-result-card weekly-box-summary-card">
+      <div class="summary-result-head">
+        <span class="summary-result-eyebrow">Item Summary</span>
+        <h3>Item ${escapeHtml(summary.boxId)}</h3>
+      </div>
+      <div class="summary-seen-boxes">
+        <div class="summary-section-head">
+          <span class="summary-section-title">Totals</span>
+        </div>
+        <div class="status-chips">
+          <span class="status-chip">Total Times Booked Out: ${
+            selectedDayEntries.length
+          }</span>
+          <span class="status-chip">Total Duration in Offices: ${escapeHtml(
+            formatDuration(selectedDayDurationMinutes)
+          )}</span>
+        </div>
+      </div>
+      <div class="summary-seen-boxes">
+        <div class="summary-section-head">
+          <span class="summary-section-title">Offices Seen ${escapeHtml(
+            selectedDay.dayName
+          )}</span>
+        </div>
+        <div class="weekly-office-pill-list">${officesMarkup}</div>
+      </div>
+      ${historyMarkup}
+    </article>
+  `;
+}
+
+function renderWeeklyPopup() {
+  if (!activeWeeklyDayKey) return;
+
+  const selectedDay = getWeeklyDay(activeWeeklyDayKey);
+  if (!selectedDay) return;
+
+  clearWeeklyHistoryHighlightState();
+
+  const boxSummaries = getFilteredWeeklyBoxSummariesForDay(activeWeeklyDayKey);
+  const itemFilter = escapeHtml(String(activeWeeklyItemFilter || "").trim());
+
+  weeklyPopupTitleElement.textContent = selectedDay.dayLabel;
+  weeklyPopupCopyElement.textContent =
+    "Each item card shows the item totals and the offices it visited on this day. Click an office to open the detailed visit entry.";
+  weeklyPopupMetaElement.innerHTML = `
+    <span class="status-chip">Total book outs: ${selectedDay.bookedOutBoxCount}</span>
+    <label class="weekly-popup-search-field" aria-label="Filter items for this day">
+      <input
+        type="search"
+        class="input weekly-popup-search-input"
+        id="weeklyPopupSearchInput"
+        data-weekly-item-filter
+        placeholder="Filter by item number"
+        inputmode="numeric"
+        autocomplete="off"
+        value="${itemFilter}"
+      />
+    </label>
+  `;
+
+  weeklyPopupBodyElement.innerHTML = boxSummaries.length
+    ? `<div class="weekly-box-summary-grid">${boxSummaries
+        .map((summary) => renderWeeklyItemSummaryCard(summary, selectedDay))
+        .join("")}</div>`
+    : `<div class="weekly-popup-empty">${
+        itemFilter
+          ? `No items match "${itemFilter}" for this day.`
+          : "No items were booked out on this day."
+      }</div>`;
+
+  weeklyPopupBodyElement.scrollTop = 0;
+}
+
+function renderWeeklyLeaderboardPopup() {
+  if (!activeWeeklyLeaderboardType) return;
+
+  const isMostPopular = activeWeeklyLeaderboardType === "most-popular";
+  const rankedItems = isMostPopular
+    ? getTopWeeklyPopularItems(20)
+    : getTopWeeklyBookedOutItems(20);
+  const leaderboardItems = rankedItems.map((summary) => ({
+    label: `Item ${summary.boxId}`,
+    count: isMostPopular
+      ? summary.totalTimeSeenMinutes
+      : summary.totalTimesBookedOut,
+  }));
+
+  clearWeeklyHistoryHighlightState();
+
+  weeklyLeaderboardTitleElement.textContent = isMostPopular
+    ? "Top 20 Most Popular Items"
+    : "Top 20 Most Booked Out Items";
+  weeklyLeaderboardCopyElement.textContent =
+    isMostPopular
+      ? "This weekly view ranks items by total time spent out during the week."
+      : "This weekly view ranks the busiest items by total bookings across the week.";
+  weeklyLeaderboardMetaElement.innerHTML = `
+    <span class="status-chip">Week: ${escapeHtml(
+      dashboardState.weekly.weekLabel
+    )}</span>
+  `;
+
+  renderInsightList(
+    weeklyLeaderboardBodyElement,
+    leaderboardItems,
+    "No weekly item activity has been recorded yet.",
+    isMostPopular ? "total" : "bookings",
+    isMostPopular
+      ? {
+          detailFormatter: (item) => `${formatDuration(item.count)} total`,
+          countFormatter: (item) => formatDuration(item.count),
+        }
+      : undefined
+  );
+
+  weeklyLeaderboardBodyElement.scrollTop = 0;
+}
+
+function closeWeeklyPopup() {
+  clearWeeklyHistoryHighlightState();
+  activeWeeklyDayKey = null;
+  activeWeeklyItemFilter = "";
+  weeklyPopup.classList.remove("alert-popup-visible");
+  syncPopupOpenState();
+
+  if (lastWeeklyTrigger) {
+    lastWeeklyTrigger.focus();
+  }
+}
+
+function closeWeeklyLeaderboardPopup() {
+  clearWeeklyHistoryHighlightState();
+  activeWeeklyLeaderboardType = "";
+  weeklyLeaderboardPopup.classList.remove("alert-popup-visible");
+  syncPopupOpenState();
+
+  if (lastWeeklyLeaderboardTrigger) {
+    lastWeeklyLeaderboardTrigger.focus();
+  }
+}
+
+function openWeeklyPopup(dayKey, triggerElement) {
+  if (!getWeeklyDay(dayKey)) return;
+
+  activeWeeklyDayKey = dayKey;
+  activeWeeklyItemFilter = "";
+  lastWeeklyTrigger = triggerElement || null;
+  renderWeeklyPopup();
+  weeklyPopup.classList.add("alert-popup-visible");
+  syncPopupOpenState();
+}
+
+function openWeeklyLeaderboardPopup(type, triggerElement) {
+  activeWeeklyLeaderboardType = type;
+  lastWeeklyLeaderboardTrigger = triggerElement || null;
+  renderWeeklyLeaderboardPopup();
+  weeklyLeaderboardPopup.classList.add("alert-popup-visible");
+  syncPopupOpenState();
+}
+
 insightPopup.addEventListener("click", (event) => {
   if (event.target.closest("[data-dashboard-popup-close]")) {
     closeInsightPopup();
@@ -401,8 +1082,45 @@ statusPopup.addEventListener("click", (event) => {
   }
 });
 
+weeklyPopup.addEventListener("click", (event) => {
+  if (event.target.closest("[data-weekly-popup-close]")) {
+    closeWeeklyPopup();
+  }
+});
+
+weeklyLeaderboardPopup.addEventListener("click", (event) => {
+  if (event.target.closest("[data-weekly-leaderboard-close]")) {
+    closeWeeklyLeaderboardPopup();
+  }
+});
+
+weeklyPopup.addEventListener("input", (event) => {
+  const filterInput = event.target.closest("[data-weekly-item-filter]");
+  if (!(filterInput instanceof HTMLInputElement)) return;
+
+  activeWeeklyItemFilter = filterInput.value.trim();
+  renderWeeklyPopup();
+
+  const refreshedFilterInput = document.getElementById("weeklyPopupSearchInput");
+  if (refreshedFilterInput instanceof HTMLInputElement) {
+    refreshedFilterInput.focus();
+    const selectionEnd = refreshedFilterInput.value.length;
+    refreshedFilterInput.setSelectionRange(selectionEnd, selectionEnd);
+  }
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
+
+  if (weeklyLeaderboardPopup.classList.contains("alert-popup-visible")) {
+    closeWeeklyLeaderboardPopup();
+    return;
+  }
+
+  if (weeklyPopup.classList.contains("alert-popup-visible")) {
+    closeWeeklyPopup();
+    return;
+  }
 
   if (statusPopup.classList.contains("alert-popup-visible")) {
     closeStatusPopup();
@@ -438,6 +1156,87 @@ statusCardElements.forEach((card) => {
     event.preventDefault();
     openStatusPopup(card.dataset.statusKey, card);
   });
+});
+
+weeklyStatsGraphElement?.addEventListener("click", (event) => {
+  const dayButton = event.target.closest("[data-weekly-day-key]");
+  if (!dayButton) return;
+
+  openWeeklyPopup(dayButton.dataset.weeklyDayKey, dayButton);
+});
+
+weeklySummaryMetaElement?.addEventListener("click", (event) => {
+  const actionButton = event.target.closest("[data-weekly-summary-action]");
+  if (!actionButton) return;
+
+  if (
+    actionButton.dataset.weeklySummaryAction === "most-booked-out" ||
+    actionButton.dataset.weeklySummaryAction === "most-popular"
+  ) {
+    openWeeklyLeaderboardPopup(
+      actionButton.dataset.weeklySummaryAction,
+      actionButton
+    );
+  }
+});
+
+function handleWeeklyHistoryChipClick(event) {
+  const chip = event.target.closest("[data-weekly-history-target]");
+  if (!chip) return;
+
+  const targetId = chip.getAttribute("data-weekly-history-target");
+  if (!targetId) return;
+
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  const historyEntry = target.closest(".summary-history-item") || target;
+
+  if (activeWeeklyHistoryEntry && activeWeeklyHistoryEntry !== historyEntry) {
+    activeWeeklyHistoryEntry.classList.add("summary-history-item-hidden");
+    activeWeeklyHistoryEntry.classList.remove("summary-history-item-active");
+    activeWeeklyHistoryEntry.classList.remove("summary-history-item-flash");
+  }
+
+  if (activeWeeklyHistoryChip && activeWeeklyHistoryChip !== chip) {
+    activeWeeklyHistoryChip.classList.remove("summary-history-chip-selected");
+    activeWeeklyHistoryChip.classList.remove("summary-history-chip-active");
+  }
+
+  if (historyEntry) {
+    historyEntry.classList.remove("summary-history-item-hidden");
+    historyEntry.classList.add("summary-history-item-active");
+    historyEntry.classList.remove("summary-history-item-flash");
+    activeWeeklyHistoryEntry = historyEntry;
+  }
+
+  chip.classList.add("summary-history-chip-selected");
+  chip.classList.remove("summary-history-chip-active");
+  activeWeeklyHistoryChip = chip;
+
+  historyEntry.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  historyEntry?.offsetWidth;
+  historyEntry?.classList.add("summary-history-item-flash");
+  chip.classList.add("summary-history-chip-active");
+
+  if (weeklyHistoryHighlightTimeoutId) {
+    window.clearTimeout(weeklyHistoryHighlightTimeoutId);
+  }
+
+  weeklyHistoryHighlightTimeoutId = window.setTimeout(() => {
+    chip.classList.remove("summary-history-chip-active");
+    historyEntry?.classList.remove("summary-history-item-flash");
+    weeklyHistoryHighlightTimeoutId = null;
+  }, 1600);
+}
+
+weeklyPopupBodyElement?.addEventListener("click", handleWeeklyHistoryChipClick);
+weeklyLeaderboardBodyElement?.addEventListener(
+  "click",
+  handleWeeklyHistoryChipClick
+);
+
+weeklyExportButton?.addEventListener("click", () => {
+  downloadWeeklyStatsWorkbook(dashboardState.weekly);
 });
 
 function renderDashboard() {
@@ -599,12 +1398,22 @@ function renderDashboard() {
     );
   });
 
+  renderWeeklySummary();
+
   if (activeInsightKey) {
     renderInsightPopup();
   }
 
   if (activeStatusKey) {
     renderStatusPopup();
+  }
+
+  if (activeWeeklyDayKey) {
+    renderWeeklyPopup();
+  }
+
+  if (activeWeeklyLeaderboardType) {
+    renderWeeklyLeaderboardPopup();
   }
 }
 
@@ -618,4 +1427,6 @@ onValue(ref(db, officesCollectionPath), (snapshot) => {
   renderDashboard();
 });
 
+bindWeeklyStatsListener();
+scheduleWeeklyWeekRefresh();
 renderDashboard();

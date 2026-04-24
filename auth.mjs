@@ -7,6 +7,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "./firebase.mjs";
+import { ensureDailyResetAutomation } from "./operationalreset.mjs";
 
 const LOGIN_PAGE_PATH = "./login.html";
 const HOME_PAGE_PATH = "./index.html";
@@ -221,6 +222,15 @@ async function requireAuth() {
   }
 
   initLogoutButton();
+  await ensureDailyResetAutomation({
+    user,
+    boxesCollectionPath: getBoxesCollectionPath(user),
+    officesCollectionPath: getOfficesCollectionPath(user),
+    activeWeeklyMovementsPath: getActiveWeeklyMovementsPath(user),
+    dailyResetStatePath: getDailyResetStatePath(user),
+  }).catch((error) => {
+    console.error("Daily reset automation could not start.", error);
+  });
   return user;
 }
 
@@ -283,11 +293,26 @@ function getOfficesCollectionPath(userOrUid) {
   return `${getUserRootPath(userOrUid)}/offices`;
 }
 
+function getWeeklyStatsCollectionPath(userOrUid) {
+  return `${getUserRootPath(userOrUid)}/weeklyStats`;
+}
+
+function getActiveWeeklyMovementsPath(userOrUid) {
+  return `${getUserRootPath(userOrUid)}/activeWeeklyMovements`;
+}
+
+function getDailyResetStatePath(userOrUid) {
+  return `${getUserRootPath(userOrUid)}/system/dailyReset`;
+}
+
 export {
+  getActiveWeeklyMovementsPath,
   getBoxesCollectionPath,
+  getDailyResetStatePath,
   getOfficesCollectionPath,
   getRedirectTarget,
   getUserRootPath,
+  getWeeklyStatsCollectionPath,
   initLogoutButton,
   redirectAuthenticatedUser,
   requestPasswordReset,
